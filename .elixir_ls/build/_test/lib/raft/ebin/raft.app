@@ -1,0 +1,9 @@
+{application,raft,
+             [{applications,[kernel,stdlib,elixir,logger]},
+              {description,"raft"},
+              {modules,['Elixir.BestEffortBC','Elixir.Config',
+                        'Elixir.Helpers','Elixir.LogEnt','Elixir.Raft',
+                        'Elixir.Raft.Candidate','Elixir.Raft.GetHostIP',
+                        'Elixir.Raft.SStable']},
+              {registered,[]},
+              {vsn,"0.1.0"}]}.
