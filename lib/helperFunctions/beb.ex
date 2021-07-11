@@ -1,7 +1,8 @@
 defmodule BestEffortBC do
   def start(name, neighbours, upper) do
     pid = spawn(BestEffortBC, :init, [name, neighbours, upper])
-    # :global.unregister_name(name)
+    :global.unregister_name(name)
+
     case :global.re_register_name(name, pid) do
       :yes -> pid
       :no -> :error

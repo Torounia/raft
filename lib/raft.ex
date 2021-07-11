@@ -1,66 +1,21 @@
 defmodule Raft do
   alias Raft.{
-    SStable,
-    GetHostIP
+    InitStateVar,
+    MessageProcessor
   }
 
   require Logger
 
   def init do
-    Logger.info("Starting raft server")
-    # initialise all viarbles
+    Logger.info("Starting Raft consensus module")
+    Logger.info("Starting Raft Supervisor")
     Logger.info("Initialising persistent state variables")
-    var = initVariables()
+    state = InitStateVar.initVariables()
+    Logger.debug("Persistent state variables: #{inspect(state)}")
+    Logger.debug("Starting Communication Layer")
+    {:ok, pid} = MessageProcessor.startServer(state)
+    Logger.info("Communication Layer started with pid: #{inspect(pid)}")
   end
 
-  def initVariables() do
-    sstable = initStableState()
 
-    %{
-      # latest term server has seen (initialized to 0 on first boot, increases monotonically)
-      # int that increments everytime new leader election happens
-      currentTerm: sstable.currentTerm,
-
-      # candidateId that received vote in current term (or null if none)
-      votedFor: sstable.votedFor,
-
-      # Replicated log ( has )
-      log: sstable.log,
-
-      # how far we have commited (or agrred) along the log with the rest of the nodes
-      commitLength: sstable.commitLength,
-
-      # index of highest log entry known to be committed (initialized to 0, increases monotonically)
-      commitIndex: 0,
-
-      # index of highest log entry applied to state machine (initialized to 0, increases monotonically)
-      lastApplied: 0,
-
-      # current role (always a follower at first start)
-      currentRole: :follower,
-      votesReceived: nil,
-      sentLength: nil,
-      ackedLength: nil
-    }
-  end
-
-  def initStableState do
-    # First look for disk state, if nothing, initialise new sState and return
-
-    case SStable.fetch() do
-      {:ok, stateFromFile} ->
-        Logger.info("Found stable state on disk dated: #{stateFromFile.lastWriteUTC}")
-        stateFromFile.data
-
-      {:error, :enoent} ->
-        Logger.info("No stable state on disk found. Initialising to defaults")
-
-        %{
-          currentTerm: 0,
-          votedFor: nil,
-          log: [],
-          commitLength: 0
-        }
-    end
-  end
 end
