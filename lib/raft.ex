@@ -1,20 +1,26 @@
 defmodule Raft do
+  @doc """
+  External facing module. Should have functions: init, write/ read log, system status
+  """
   alias Raft.{
     InitStateVar,
-    MessageProcessor
+    Supervisor
   }
 
   require Logger
 
   def init do
+
     Logger.info("Starting Raft consensus module")
-    Logger.info("Starting Raft Supervisor")
-    Logger.info("Initialising persistent state variables")
+    Logger.info("Starting Raft Supervisor #TODO")
+    Logger.info("Initialising state")
     state = InitStateVar.initVariables()
-    Logger.debug("Persistent state variables: #{inspect(state)}")
-    Logger.debug("Starting Communication Layer")
-    {:ok, pid} = MessageProcessor.startServer(state)
-    Logger.info("Communication Layer started with pid: #{inspect(pid)}")
+    Logger.info("Starting Supervisor")
+    {:ok, pid} = Supervisor.startSupervisor(state)
+    Logger.info("Supervisor started. pid: #{inspect(pid)}")
+    Logger.info("Supervisor children: #{inspect(Supervisor.which_children())}")
+
+
   end
 
 
