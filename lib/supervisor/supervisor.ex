@@ -10,7 +10,7 @@ defmodule Raft.Supervisor do
     children = [
       %{
         id: Raft.Comms,
-        start: {Raft.Comms, :startServer, [init_arg]}
+        start: {Raft.Comms, :startServer,[]}
       },
       %{
         id: Raft.Timer,

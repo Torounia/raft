@@ -2,6 +2,7 @@ defmodule Raft.Timer do
   use GenServer
   require Logger
   alias Raft.MessageProcessor, as: MP
+  alias Raft.Helpers, as: Fun
 
   def start_link() do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -20,20 +21,24 @@ defmodule Raft.Timer do
   end
 
   def handle_call(:start_timer, _from, %{}) do
-    timer = Process.send_after(self(), :work, 1000)
+    timeout = Fun.rand_election_timeout()
+    IO.puts(timeout)
+    timer = Process.send_after(self(), :work, timeout)
     {:reply, :ok, %{timer: timer}}
   end
 
   def handle_call(:reset_timer, _from, %{timer: timer}) do
     :timer.cancel(timer)
-    timer = Process.send_after(self(), :work, 1000)
+    timeout = Fun.rand_election_timeout()
+    timer = Process.send_after(self(), :work, timeout)
     {:reply, :ok, %{timer: timer}}
   end
 
   def handle_info(:work, _state) do
     IO.puts("times up!")
-
-    timer = Process.send_after(self(), :work, 1000)
+    timeout = Fun.rand_election_timeout()
+    IO.puts("New timout: #{timeout}")
+    timer = Process.send_after(self(), :work, timeout)
 
     {:noreply, %{timer: timer}}
   end

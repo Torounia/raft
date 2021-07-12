@@ -1,19 +1,22 @@
 defmodule Raft.Comms do
   use GenServer
   require Logger
-  alias Raft.Comms.ClusterConfig
+  alias Raft.ClusterConfig, as: ClusterConfig
   # client API
 
-  def startServer(state) do
-    GenServer.start_link(__MODULE__, state, name: :server)
+  def startServer() do
+    GenServer.start_link(__MODULE__, %{}, name: :server)
   end
 
-  def append(nodes, var, val) do
-    GenServer.abcast(nodes, :server, {:append, var, val})
+  def broadcast(nodes, source, msg) do
+    Logger.debug("[#{Node.self()}] Broadcasting #{msg} to all nodes")
+    GenServer.abcast(nodes, :server, {:broadcast, source, msg})
   end
 
-  def showState do
-    GenServer.call(:server, :showState)
+  def send_msg(source, dest, msg) do
+    Logger.debug("[#{Node.self()}] Sending #{inspect(msg)} to #{inspect(dest)}")
+    # TODO use PID for dest instead of name  e.g :global.whereis_name(:peer2@localhost_comms)
+    GenServer.cast(dest, {:sendMsg, source, msg})
   end
 
   # callbacks
@@ -22,12 +25,14 @@ defmodule Raft.Comms do
     {:ok, state}
   end
 
-  def handle_cast({:append, var, val}, state) do
-    Logger.debug("I am #{inspect(Node.self())}, received broadcast :append #{var}, #{val} ")
-    {:noreply, Map.replace(state, var, val)}
+  def handle_cast({:broadcast, source, msg}, state) do
+    Logger.debug("[#{Node.self()}] Received broadcast #{inspect(msg)} from #{inspect(source)}")
+    {:noreply, state}
   end
 
-  def handle_call(:showStat, _from, state) do
-    {:reply, state, state}
+  def handle_cast({:sendMsg, source, msg}, state) do
+    Logger.debug("[#{Node.self()}] Received msg #{inspect(msg)} from #{inspect(source)}")
+    {:noreply, state}
+    # :global.register_name(:peer2@locahost, Process.whereis(:peer2@localhost))
   end
 end
