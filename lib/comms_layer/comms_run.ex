@@ -9,14 +9,23 @@ defmodule Raft.Comms do
   end
 
   def broadcast(nodes, source, msg) do
-    Logger.debug("[#{Node.self()}] Broadcasting #{msg} to all nodes")
+    Logger.debug("[Broadcasting #{inspect(msg)} to all nodes")
+
     GenServer.abcast(nodes, :server, {:broadcast, source, msg})
   end
 
   def send_msg(source, dest, msg) do
-    Logger.debug("[#{Node.self()}] Sending #{inspect(msg)} to #{inspect(dest)}")
-    # TODO use PID for dest instead of name  e.g :global.whereis_name(:peer2@localhost_comms)
-    GenServer.cast(dest, {:sendMsg, source, msg})
+    Logger.debug("#{:global.whereis_name(dest)}")
+
+    case :global.whereis_name(dest) do
+      :undefined ->
+        Logger.debug("Cannot find #{inspect(dest)} in the cluster")
+
+      pid ->
+        Logger.debug("Sending #{inspect(msg)} to #{inspect(dest)}")
+
+        GenServer.cast(pid, {:sendMsg, source, msg})
+    end
   end
 
   # callbacks
@@ -26,12 +35,14 @@ defmodule Raft.Comms do
   end
 
   def handle_cast({:broadcast, source, msg}, state) do
-    Logger.debug("[#{Node.self()}] Received broadcast #{inspect(msg)} from #{inspect(source)}")
+    Logger.debug("Received broadcast #{inspect(msg)} from #{inspect(source)}")
+
     {:noreply, state}
   end
 
   def handle_cast({:sendMsg, source, msg}, state) do
-    Logger.debug("[#{Node.self()}] Received msg #{inspect(msg)} from #{inspect(source)}")
+    Logger.debug("Received msg #{inspect(msg)} from #{inspect(source)}")
+
     {:noreply, state}
     # :global.register_name(:peer2@locahost, Process.whereis(:peer2@localhost))
   end

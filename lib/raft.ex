@@ -16,8 +16,10 @@ defmodule Raft do
     Logger.info("Initialising state")
     state = InitStateVar.initVariables()
     Logger.info("Starting Supervisor")
-    {:ok, pid} = Supervisor.startSupervisor(state)
-    Logger.info("Supervisor started. pid: #{inspect(pid)}")
+    case Supervisor.startSupervisor(state) do
+      {:ok, pid} -> Logger.info("Supervisor started. pid: #{inspect(pid)}")
+      {:error, {:already_started, pid}} -> Logger.info("Supervisor already started. pid: #{inspect(pid)}")
+    end
     Logger.info("Supervisor children: #{inspect(Supervisor.which_children())}")
 
 
