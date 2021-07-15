@@ -1,32 +1,38 @@
-defmodule Raft.MessageProcessing do
+defmodule Raft.MessageProcessing.Main do
   use GenServer
   require Logger
 
+  alias Raft.MessageProcessing.Types, as: MP_types
+
   # client API
 
-  def startServer(state) do
-    GenServer.start_link(__MODULE__, state, name: :server)
+  def start_link(state) do
+    Logger.debug("Starting MessageProcessing GenServer")
+    GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
-  def append(nodes, var, val) do
-    GenServer.abcast(nodes, :server, {:append, var, val})
+  def heartbeat_timer_timeout do
+    GenServer.call(__MODULE__, :heartbeat_timer_timeout)
   end
 
-  def showState do
-    GenServer.call(:server, :showState)
+  def first_time_run do
+    GenServer.call(__MODULE__, :first_time_run)
   end
 
   # callbacks
   def init(state) do
+    GenServer.call(__MODULE__, :first_time_run)
     {:ok, state}
   end
 
-  def handle_cast({:append, var, val}, state) do
-    Logger.debug("I am #{inspect(Node.self())}, received broadcast :append #{var}, #{val} ")
-    {:noreply, Map.replace(state, var, val)}
+  def handle_call(:heartbeat_timer_timeout, _from, state) do
+    new_state = MP_types.canditate(state)
+    {:reply, :starting_election, new_state}
   end
 
-  def handle_call(:showStat, _from, state) do
-    {:reply, state, state}
+  # TODOspin a new process to use this function
+  def handle_info(:first_time_run, state) do
+    MP_types.first_time_run(state)
+    {:reply, :ok, state}
   end
 end

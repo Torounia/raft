@@ -13,9 +13,14 @@ defmodule Raft.Supervisor do
         start: {Raft.Comms, :startServer,[]}
       },
       %{
+        id: Raft.MessageProcessing.Main,
+        start: {Raft.MessageProcessing.Main, :start_link, [init_arg]}
+      },
+      %{
         id: Raft.Timer,
         start: {Raft.Timer, :start_link, []}
       }
+
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

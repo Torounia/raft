@@ -5,7 +5,8 @@ defmodule Raft.Comms do
   # client API
 
   def startServer() do
-    GenServer.start_link(__MODULE__, %{}, name: :server)
+    Logger.debug("Starting Comms GenServer")
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
   def broadcast(nodes, source, msg) do

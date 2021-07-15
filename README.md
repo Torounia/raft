@@ -1,6 +1,11 @@
 # Raft
 
-**TODO: Add description**
+##TODO: 
+Add description
+check for naming convention
+check for error catches
+
+        
 
 ## Installation
 

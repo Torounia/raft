@@ -12,7 +12,7 @@ defmodule Raft.ClusterConfig do
     :global.sync()
     Logger.debug("Other globally registered nodes: #{inspect(:global.registered_names())}")
 
-    nodesNotSelf = Enum.filter(%Raft.Config{}.peers, fn node -> node != Node.self() end)
+    nodesNotSelf = Enum.filter(%Raft.Configurations{}.peers, fn node -> node != Node.self() end)
     Logger.debug("Conneting to other nodes")
 
     Enum.each(nodesNotSelf, fn node ->
