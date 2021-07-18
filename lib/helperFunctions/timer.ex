@@ -9,40 +9,46 @@ defmodule Raft.Timer do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def start_timer() do
-    GenServer.call(__MODULE__, :start_timer)
+  def start_election_timer() do
+    GenServer.call(__MODULE__, :start_election_timer)
   end
 
   def reset_timer() do
     GenServer.call(__MODULE__, :reset_timer)
   end
 
+  def cancel_election_timer() do
+    GenServer.call(__MODULE__, :cancel_election_timer)
+  end
+
   def init(%{}) do
     {:ok, %{}}
   end
 
-  def handle_call(:start_timer, _from, %{}) do
+  def handle_call(:start_election_timer, _from, %{}) do
     timeout = RandTimer.rand_election_timeout()
-    timer = Process.send_after(self(), :work, timeout)
+    timer = Process.send_after(__MODULE__, :work, timeout)
     Logger.debug("Timer set for #{inspect(timeout)} ms")
-    {:reply, :ok, %{timer: timer}}
+    {:reply, :ok, %{election_timer: timer}}
   end
 
-  def handle_call(:reset_timer, _from, %{timer: timer}) do
+  def handle_call(:reset_timer, _from, %{election_timer: timer}) do
     :timer.cancel(timer)
     timeout = RandTimer.rand_election_timeout()
-    timer = Process.send_after(self(), :work, timeout)
-    {:reply, :ok, %{timer: timer}}
+    timer = Process.send_after(__MODULE__, :work, timeout)
+    {:reply, :ok, %{election_timer: timer}}
   end
 
-  def handle_info(:work, _state) do
-    Logger.debug("times up!")
-    MP.heartbeat_timer_timeout()
-    timeout = RandTimer.rand_election_timeout()
-    IO.puts("New timout: #{timeout}")
-    timer = Process.send_after(self(), :work, timeout)
+  def handle_call(:cancel_election_timer, _from, %{election_timer: timer}) do
+    :timer.cancel(timer)
+    {:reply, :ok, %{}}
+  end
 
-    {:noreply, %{timer: timer}}
+  def handle_info(:work, %{election_timer: timer}) do
+    Logger.debug("timeout. calling above")
+    MP.heartbeat_timer_timeout()
+    :timer.cancel(timer)
+    {:noreply, %{}}
   end
 
   # unhandled messages don't error

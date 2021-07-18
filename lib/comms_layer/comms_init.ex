@@ -8,14 +8,15 @@ defmodule Raft.ClusterConfig do
     # Logger.debug("Setting up cookie")
     # Node.set_cookie(%Raft.Config{}.cookie)
     Logger.debug("Registering Global name and syncing..")
-    :global.register_name(String.to_atom(Atom.to_string(Node.self()) <> "_comms"), self())
+    # :global.register_name(String.to_atom(Atom.to_string(Node.self()) <> "_comms"), self())
+    :global.register_name(Node.self(), self())
     :global.sync()
     Logger.debug("Other globally registered nodes: #{inspect(:global.registered_names())}")
 
-    nodesNotSelf = Enum.filter(%Raft.Configurations{}.peers, fn node -> node != Node.self() end)
+    nodes_not_self = Enum.filter(%Raft.Configurations{}.peers, fn node -> node != Node.self() end)
     Logger.debug("Conneting to other nodes")
 
-    Enum.each(nodesNotSelf, fn node ->
+    Enum.each(nodes_not_self, fn node ->
       if Node.connect(node) do
         Logger.debug("Connected to #{inspect(node)}")
       else

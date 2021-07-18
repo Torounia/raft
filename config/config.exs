@@ -3,5 +3,5 @@ import Config
 config :logger, :console,
   backends: [:console],
   level: :debug,
-  format: "$time [$level][$metadata]$message \n",
-  metadata: [:mfa, :pid, :registered_name]
+  format: {Raft.LogFormatter, :format},
+  metadata: [:node, :mfa, :pid, :registered_name]

@@ -2,6 +2,7 @@ defmodule Raft.Comms do
   use GenServer
   require Logger
   alias Raft.ClusterConfig, as: ClusterConfig
+  alias Raft.MessageProcessing.Main, as: MP
   # client API
 
   def startServer() do
@@ -10,13 +11,14 @@ defmodule Raft.Comms do
   end
 
   def broadcast(nodes, source, msg) do
-    Logger.debug("[Broadcasting #{inspect(msg)} to all nodes")
+    nodes_not_self = Enum.filter(nodes, fn node -> node != Node.self() end)
+    Logger.debug("[Broadcasting #{inspect(msg)} to #{inspect(nodes_not_self)}")
 
-    GenServer.abcast(nodes, :server, {:broadcast, source, msg})
+    GenServer.abcast(nodes_not_self, __MODULE__, {:broadcast, source, msg})
   end
 
   def send_msg(source, dest, msg) do
-    Logger.debug("#{:global.whereis_name(dest)}")
+    Logger.debug("#{inspect(:global.whereis_name(dest))}")
 
     case :global.whereis_name(dest) do
       :undefined ->
@@ -37,7 +39,8 @@ defmodule Raft.Comms do
 
   def handle_cast({:broadcast, source, msg}, state) do
     Logger.debug("Received broadcast #{inspect(msg)} from #{inspect(source)}")
-
+    Logger.debug("Sending to Raft.MessageProcessing.Main")
+    MP.received_msg(msg)
     {:noreply, state}
   end
 

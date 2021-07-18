@@ -2,7 +2,8 @@ defmodule Raft.InitStateVar do
   require Logger
 
   alias Raft.{
-    SStable
+    SStable,
+    Configurations
   }
 
   def initVariables() do
@@ -11,29 +12,31 @@ defmodule Raft.InitStateVar do
     state = %{
       # latest term server has seen (initialized to 0 on first boot, increases monotonically)
       # int that increments everytime new leader election happens
-      currentTerm: sstable.currentTerm,
+      current_term: sstable.current_term,
 
       # candidateId that received vote in current term (or null if none)
-      votedFor: sstable.votedFor,
+      voted_for: sstable.voted_for,
 
       # Replicated log ( has )
       log: sstable.log,
 
       # how far we have commited (or agrred) along the log with the rest of the nodes
-      commitLength: sstable.commitLength,
+      commit_length: sstable.commit_length,
 
       # index of highest log entry known to be committed (initialized to 0, increases monotonically)
-      commitIndex: 0,
+      commit_index: 0,
 
       # index of highest log entry applied to state machine (initialized to 0, increases monotonically)
-      lastApplied: 0,
+      last_applied: 0,
 
       # current role (always a follower at first start)
-      currentRole: :follower,
-      votesReceived: nil,
-      sentLength: nil,
-      ackedLength: nil,
-      peers: []
+      current_role: :follower,
+      votes_received: [],
+      sent_length: nil,
+      acked_length: nil,
+      current_leader: nil,
+      peers: %Configurations{}.peers,
+      cluster_size: Enum.count(%Configurations{}.peers)
     }
 
     Logger.debug("state: #{inspect(state)}")
@@ -53,10 +56,10 @@ defmodule Raft.InitStateVar do
         Logger.info("No stable state on disk found. Initialising to defaults")
 
         %{
-          currentTerm: 0,
-          votedFor: nil,
+          current_term: 0,
+          voted_for: nil,
           log: [],
-          commitLength: 0
+          commit_length: 0
         }
     end
   end
