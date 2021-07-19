@@ -18,14 +18,14 @@ defmodule Raft.Comms do
   end
 
   def send_msg(source, dest, msg) do
-    Logger.debug("#{inspect(:global.whereis_name(dest))}")
-
     case :global.whereis_name(dest) do
       :undefined ->
         Logger.debug("Cannot find #{inspect(dest)} in the cluster")
 
       pid ->
-        Logger.debug("Sending #{inspect(msg)} to #{inspect(dest)}")
+        Logger.debug(
+          "Sending #{inspect(msg)} to #{inspect(dest)} @ #{inspect(:global.whereis_name(dest))}"
+        )
 
         GenServer.cast(pid, {:sendMsg, source, msg})
     end
@@ -38,16 +38,20 @@ defmodule Raft.Comms do
   end
 
   def handle_cast({:broadcast, source, msg}, state) do
-    Logger.debug("Received broadcast #{inspect(msg)} from #{inspect(source)}")
-    Logger.debug("Sending to Raft.MessageProcessing.Main")
+    Logger.debug(
+      "Received broadcast #{inspect(msg)} from #{inspect(source)}. Sending to Raft.MessageProcessing.Main"
+    )
+
     MP.received_msg(msg)
     {:noreply, state}
   end
 
   def handle_cast({:sendMsg, source, msg}, state) do
-    Logger.debug("Received msg #{inspect(msg)} from #{inspect(source)}")
+    Logger.debug(
+      "Received msg #{inspect(msg)} from #{inspect(source)}. Sending to Raft.MessageProcessing.Main"
+    )
 
+    MP.received_msg(msg)
     {:noreply, state}
-    # :global.register_name(:peer2@locahost, Process.whereis(:peer2@localhost))
   end
 end

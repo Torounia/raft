@@ -4,6 +4,7 @@ defmodule Raft.MessageProcessing.Types do
   alias Raft.MessageProcessing.Helpers, as: Helpers
   alias Raft.Comms, as: Comms
   alias Raft.Configurations
+  alias Raft.LogEnt
 
   def first_time_run(state) do
     Logger.debug("First time run state #{inspect(state)}")
@@ -25,6 +26,7 @@ defmodule Raft.MessageProcessing.Types do
         votes_received: [Node.self() | state.votes_received] |> Enum.reverse()
     }
 
+    Helpers.store_state_to_disk(state)
     last_term = Helpers.log_last_term(state)
 
     broadcast_payload =
@@ -49,7 +51,7 @@ defmodule Raft.MessageProcessing.Types do
     state
   end
 
-  def rec_vote_request({c_Id, c_term, c_log_length, c_log_term}, state) do
+  def vote_request({c_Id, c_term, c_log_length, c_log_term}, state) do
     my_log_term = Helpers.log_last_term(state)
 
     log_ok =
@@ -76,12 +78,15 @@ defmodule Raft.MessageProcessing.Types do
           {:voteResponse, {Node.self(), state.current_term, true}}
         )
 
-        %{
+        state = %{
           state
           | current_term: c_term,
             current_role: :follower,
             voted_for: c_Id
         }
+
+        Helpers.store_state_to_disk(state)
+        state
       else
         Comms.send_msg(
           Node.self(),
@@ -91,17 +96,113 @@ defmodule Raft.MessageProcessing.Types do
 
         state
       end
+
+    state
   end
 
-  def rec_vote_reponse({voter_id, term, granded}, state) do
+  def vote_response({voter_id, term, granded}, state) do
+    state =
+      if term > state.current_term do
+        Logger.debug(
+          "Received higher term #{inspect(term)} from voter #{inspect(voter_id)}. Transitioning to :follower"
+        )
+
+        %{
+          state
+          | current_term: term,
+            current_role: :follower,
+            voted_for: nil
+        }
+
+        ## TODO seperate timers
+        # Timer.reset_timer()
+      else
+        state
+      end
+
     state =
       if state.current_role == :candidate and term == state.current_term and granded do
-        %{state | votes_received: [voter_id | state.votes_received] |> Enum.reverse()}
+        Logger.debug(
+          "Received a valid response from #{inspect(voter_id)}. term: #{
+            inspect(state.current_term)
+          }"
+        )
 
-        if Helpers.check_quorum(state) do
-          %{state | current_role: :leader, current_leader: Node.self()}
-          Timer.cancel_election_timer()
-        end
+        Logger.debug("Adding voter: #{inspect(voter_id)} to votes_received ")
+
+        state = %{
+          state
+          | votes_received: [voter_id | state.votes_received] |> Enum.uniq() |> Enum.reverse()
+        }
+
+        state =
+          if Helpers.check_quorum(state) do
+            Logger.debug(
+              "Got majority of votes required for term: #{inspect(state.current_term)}. Transitioning to :leader state."
+            )
+
+            Helpers.init_leader_state(state)
+            # TODO what is next? start heartbeat?
+          else
+            state
+          end
+      else
+        state
       end
+
+    # Timer.cancel_election_timer()
+    state
+  end
+
+  def new_entry_to_log({entry, from}, state) do
+    state =
+      if state.current_role == :leader do
+        IO.puts("111111111111111")
+
+        state = %{
+          state
+          | log: [%LogEnt{term: state.current_term, cmd: entry} | state.log] |> Enum.reverse()
+        }
+
+        IO.inspect(state)
+
+        state = %{
+          state
+          | acked_length: Map.put(state.acked_length, Node.self(), Enum.count(state.log))
+        }
+
+        IO.inspect(state)
+        Helpers.store_state_to_disk(state)
+        Helpers.replicate_log(state)
+        state
+      else
+        state
+      end
+
+    # if state.current_role == :leader do
+    #   Helpers.store_state_to_disk(state)
+    #   Helpers.replicate_log(state)
+    # end
+
+    if state.current_role == :follower or state.current_role == :candidate do
+      Logger.debug(
+        "Received new log entry request from #{inspect(from)}. Current role #{
+          inspect(state.current_role)
+        } Sending to leader"
+      )
+
+      Comms.send_msg(
+        Node.self(),
+        ## TODO, what if there is no leader to sent to? Also, do we need to send back a confirmation after commit?
+        state.current_leader,
+        {:logNewEntry, {entry, Node.self()}}
+      )
+    end
+
+    state
+  end
+
+  def replicate_log(state) do
+    index = nil
   end
 end

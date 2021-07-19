@@ -2,7 +2,7 @@ defmodule Raft.InitStateVar do
   require Logger
 
   alias Raft.{
-    SStable,
+    DETS,
     Configurations
   }
 
@@ -46,10 +46,10 @@ defmodule Raft.InitStateVar do
   def initStableState do
     # First look for disk state, if nothing, initialise new sState and return
 
-    case SStable.fetch() do
+    case DETS.fetch() do
       {:ok, stateFromFile} ->
-        Logger.info("Found stable state on disk dated: #{stateFromFile.lastWriteUTC}")
-        Logger.debug("Previous State on disk: #{stateFromFile.data}")
+        Logger.debug("Found stable state on disk dated: #{inspect(stateFromFile.lastWriteUTC)}")
+        Logger.debug("Previous State on disk: #{inspect(stateFromFile.data)}")
         stateFromFile.data
 
       {:error, :enoent} ->

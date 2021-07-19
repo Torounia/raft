@@ -23,6 +23,10 @@ defmodule Raft.MessageProcessing.Main do
     GenServer.call(__MODULE__, {:received_msg, msg})
   end
 
+  def new_entry(msg) do
+    GenServer.call(__MODULE__, {:new_entry, msg})
+  end
+
   # callbacks
   def init(state) do
     {:ok, state}
@@ -41,14 +45,30 @@ defmodule Raft.MessageProcessing.Main do
       case msg do
         {:VoteRequest, payload} ->
           Logger.debug("Received voteRequest. Sending to MessageProcessing")
-          MP_types.rec_vote_request(payload, state)
+          MP_types.vote_request(payload, state)
 
         {:VoteResponse, payload} ->
           Logger.debug("Received voteResponse. Sending to MessageProcessing")
-          MP_types.rec_vote_response(payload, state)
+          MP_types.vote_response(payload, state)
+
+        {:logNewEntry, payload} ->
+          Logger.debug("Received logNewEntry. Sending to MessageProcessing")
+          MP_types.new_entry_to_log(payload, state)
+
+        {:logRequest, payload} ->
+          Logger.debug("Received logRequest. Sending to MessageProcessing")
+          # MP_types.new_entry_to_log(payload, state)
       end
 
     # Logger.debug("New state = #{inspect(new_state)}")
+    {:reply, :ok, new_state}
+  end
+
+  def handle_call({:new_entry, msg}, from, state) do
+    GenServer.reply(from, :ok)
+    Logger.debug("Received new log entry. Sending to MessageProcessing")
+    new_state = MP_types.new_entry_to_log({msg, from}, state)
+
     {:reply, :ok, new_state}
   end
 
