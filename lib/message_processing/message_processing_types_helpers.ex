@@ -80,17 +80,56 @@ defmodule Raft.MessageProcessing.Helpers do
   end
 
   def append_entries(log_length, leader_commit, entries, state) do
-    state = %{
-      state
-      | log:
-          if Enum.count(entries) > 0 and Enum.count(state.log) > log_length do
-            if Enum.fetch!(state.log, log_length).term != Enum.fetch!(entries, 0).term do
-              Enum.reduce(0..(Enum.count(state.log) - 1), [], fn x, acc -> [x | acc] end)
-              |> Enum.reverse()
-            end
-          else
-            state.log
-          end
-    }
+    state =
+      if Enum.count(entries) > 0 and Enum.count(state.log) > log_length do
+        if Enum.fetch!(state.log, log_length).term != Enum.fetch!(entries, 0).term do
+          %{state | log: Enum.slice(state.log, 0..(log_length - 1))}
+        end
+      else
+        state
+      end
+
+    state =
+      if log_length + Enum.count(entries) > Enum.count(state.log) do
+        log_to_append =
+          Enum.slice(state.log, (Enum.count(state.log) - log_length)..Enum.count(entries - 1))
+
+        %{state | log: state.log ++ log_to_append}
+      else
+        state
+      end
+
+    state =
+      if leader_commit > state.commit_length do
+        msg_to_deliver = Enum.slice(state.log, state.commit_length..(leader_commit - 1))
+        for msg <- msg_to_deliver, do: Logger.debug("Message to application #{inspect(msg.cmd)}")
+      else
+        state
+      end
+
+    state
+  end
+
+  def commit_log_entries(state) do
+    min_acks = round((state.cluster_size + 1) / 2)
+    ready = Enum.filter(1..Enum.count(state.log), fn x -> acks(x, state) >= min_acks end)
+
+    state =
+      if Enum.count(ready) != 0 and Enum.max(ready) > state.commit_length and
+           Enum.fetch!(state.log, Enum.max(ready) - 1).term ==
+             state.current_term do
+        msg_to_deliver = Enum.slice(state.log, state.commit_length..(Enum.max(ready) - 1))
+
+        for msg <- msg_to_deliver, do: Logger.debug("Message to application #{inspect(msg.cmd)}")
+        %{state | commit_length: Enum.max(ready)}
+      else
+        state
+      end
+
+    state
+  end
+
+  def acks(len, state) do
+    Enum.filter(state.peers, fn x -> Map.get(state.acked_length, x) >= len end) |> Enum.count()
   end
 end

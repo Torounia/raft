@@ -263,4 +263,50 @@ defmodule Raft.MessageProcessing.Types do
     Logger.debug("Exit - log_request. state: #{inspect(state)}")
     state
   end
+
+  def log_response({follower, term, ack, success}, state) do
+    state =
+      if term == state.current_term and state.current_role == :leader do
+        if success == true and ack >= Map.get(state.acked_length, follower) do
+          state = %{
+            state
+            | sent_length: Map.put(state.sent_length, follower, ack),
+              acked_length: Map.put(state.acked_length, follower, ack)
+          }
+
+          state = Helpers.commit_log_entries(state)
+          state
+        else
+          state =
+            if Map.get(state.sent_length, follower) > 0 do
+              state = %{
+                state
+                | sent_length:
+                    Map.put(state.sent_length, follower, Map.get(state.sent_length, follower) - 1)
+              }
+
+              Helpers.replicate_log_single(follower, state)
+              state
+            else
+              state
+            end
+
+          state
+        end
+      else
+        state =
+          if term > state.current_term do
+            %{
+              state
+              | current_term: term,
+                voted_for: nil,
+                current_role: :follower
+            }
+          else
+            state
+          end
+
+        state
+      end
+  end
 end

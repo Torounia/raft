@@ -57,7 +57,11 @@ defmodule Raft.MessageProcessing.Main do
 
         {:logRequest, payload} ->
           Logger.debug("Received logRequest. Sending to MessageProcessing")
-          # MP_types.new_entry_to_log(payload, state)
+          MP_types.log_request(payload, state)
+
+        {:logResponse, payload} ->
+          Logger.debug("Received logResponse. Sending to MessageProcessing")
+          MP_types.log_response(payload, state)
       end
 
     # Logger.debug("New state = #{inspect(new_state)}")
