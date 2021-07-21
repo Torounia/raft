@@ -6,7 +6,7 @@ defmodule Raft.MessageProcessing.Helpers do
 
     _last_term =
       if log_length > 0 do
-        last_log = Enum.at(state.log, log_length - 1)
+        last_log = Enum.fetch!(state.log, log_length - 1)
         last_log.term
       else
         0
@@ -32,7 +32,6 @@ defmodule Raft.MessageProcessing.Helpers do
         current_leader: Node.self()
     }
 
-    replicate_log(state)
     state
   end
 
@@ -50,20 +49,19 @@ defmodule Raft.MessageProcessing.Helpers do
     end
   end
 
-  def replicate_log(state) do
+  def replicate_log_all(state) do
     nodes_not_self = Enum.filter(state.peers, fn node -> node != Node.self() end)
-    for node <- nodes_not_self, do: replicate_log_function(node, state)
+    for node <- nodes_not_self, do: replicate_log_single(node, state)
   end
 
-  def replicate_log_function(follower_id, state) do
+  def replicate_log_single(follower_id, state) do
     index = state.sent_length[follower_id]
 
     entries =
       if index == Enum.count(state.log) do
         :empty
       else
-        Enum.reduce(index..(Enum.count(state.log) - 1), [], fn x, acc -> [x | acc] end)
-        |> Enum.reverse()
+        Enum.slice(state.log, index..(Enum.count(state.log) - 1))
       end
 
     prev_log_term =
@@ -79,5 +77,20 @@ defmodule Raft.MessageProcessing.Helpers do
       {:logRequest,
        {Node.self(), state.current_term, index, prev_log_term, state.commit_length, entries}}
     )
+  end
+
+  def append_entries(log_length, leader_commit, entries, state) do
+    state = %{
+      state
+      | log:
+          if Enum.count(entries) > 0 and Enum.count(state.log) > log_length do
+            if Enum.fetch!(state.log, log_length).term != Enum.fetch!(entries, 0).term do
+              Enum.reduce(0..(Enum.count(state.log) - 1), [], fn x, acc -> [x | acc] end)
+              |> Enum.reverse()
+            end
+          else
+            state.log
+          end
+    }
   end
 end

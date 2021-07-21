@@ -1,7 +1,9 @@
 defmodule Raft.Supervisor do
   use Supervisor
   require Logger
-
+ @doc """
+ ljczxlcj
+ """
   def startSupervisor(init_arg) do
     Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
   end

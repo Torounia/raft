@@ -101,6 +101,8 @@ defmodule Raft.MessageProcessing.Types do
   end
 
   def vote_response({voter_id, term, granded}, state) do
+    Logger.debug("Entry - vote_response. state: #{inspect(state)}")
+
     state =
       if term > state.current_term do
         Logger.debug(
@@ -141,48 +143,45 @@ defmodule Raft.MessageProcessing.Types do
               "Got majority of votes required for term: #{inspect(state.current_term)}. Transitioning to :leader state."
             )
 
-            Helpers.init_leader_state(state)
+            state = Helpers.init_leader_state(state)
+            # TODO cancel election timer
+            Helpers.replicate_log_all(state)
             # TODO what is next? start heartbeat?
+            state
           else
             state
           end
+
+        state
       else
         state
       end
 
-    # Timer.cancel_election_timer()
+    Logger.debug("Exit - vote_response. state: #{inspect(state)}")
     state
   end
 
   def new_entry_to_log({entry, from}, state) do
+    Logger.debug("Entry - new_entry_to_log. state: #{inspect(state)}")
+
     state =
       if state.current_role == :leader do
-        IO.puts("111111111111111")
-
         state = %{
           state
           | log: [%LogEnt{term: state.current_term, cmd: entry} | state.log] |> Enum.reverse()
         }
-
-        IO.inspect(state)
 
         state = %{
           state
           | acked_length: Map.put(state.acked_length, Node.self(), Enum.count(state.log))
         }
 
-        IO.inspect(state)
         Helpers.store_state_to_disk(state)
-        Helpers.replicate_log(state)
+        Helpers.replicate_log_all(state)
         state
       else
         state
       end
-
-    # if state.current_role == :leader do
-    #   Helpers.store_state_to_disk(state)
-    #   Helpers.replicate_log(state)
-    # end
 
     if state.current_role == :follower or state.current_role == :candidate do
       Logger.debug(
@@ -199,10 +198,69 @@ defmodule Raft.MessageProcessing.Types do
       )
     end
 
+    Logger.debug("Exit - new_entry_to_log. state: #{inspect(state)}")
     state
   end
 
-  def replicate_log(state) do
-    index = nil
+  def log_request({leader_id, term, log_length, log_term, leader_commit, entries}, state) do
+    Logger.debug("Entry - log_request. state: #{inspect(state)}")
+    # reset_election_timer
+    state =
+      if term > state.current_term do
+        %{
+          state
+          | current_term: term,
+            voted_for: nil,
+            current_role: :follower,
+            current_leader: leader_id
+        }
+      else
+        state
+      end
+
+    state =
+      if term == state.current_term and state.current_role == :candidate do
+        %{
+          state
+          | current_role: :follower,
+            current_leader: leader_id
+        }
+      else
+        state
+      end
+
+    log_ok =
+      if Enum.count(state.log) >= log_length and
+           (log_length == 0 or log_term == Enum.fetch!(state.log, log_length - 1).term) do
+        true
+      else
+        false
+      end
+
+    state =
+      if term == state.current_term and log_ok do
+        state = Helpers.append_entries(log_length, leader_commit, entries, state)
+        acked = log_length + Enum.count(entries)
+
+        Raft.Comms.send_msg(
+          Node.self(),
+          leader_id,
+          {:logResponse, {Node.self(), state.current_term, acked, true}}
+        )
+
+        state
+      else
+        Raft.Comms.send_msg(
+          Node.self(),
+          leader_id,
+          {:logResponse, {Node.self(), state.current_term, 0, false}}
+        )
+
+        state
+      end
+
+    # reset election timer
+    Logger.debug("Exit - log_request. state: #{inspect(state)}")
+    state
   end
 end
