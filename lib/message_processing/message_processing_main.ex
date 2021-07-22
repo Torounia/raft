@@ -53,11 +53,11 @@ defmodule Raft.MessageProcessing.Main do
 
     new_state =
       case msg do
-        {:VoteRequest, payload} ->
+        {:voteRequest, payload} ->
           Logger.debug("Received voteRequest. Sending to MessageProcessing")
           MP_types.vote_request(payload, state)
 
-        {:VoteResponse, payload} ->
+        {:voteResponse, payload} ->
           Logger.debug("Received voteResponse. Sending to MessageProcessing")
           MP_types.vote_response(payload, state)
 

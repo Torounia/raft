@@ -54,6 +54,12 @@ defmodule Raft.Timer do
     {:reply, :ok, %{election_timer: timer}}
   end
 
+  def handle_call(:reset_timer, _from, %{}) do
+    timeout = RandTimer.rand_election_timeout()
+    timer = Process.send_after(__MODULE__, :work, timeout)
+    {:reply, :ok, %{election_timer: timer}}
+  end
+
   def handle_call(:reset_heartbeat_timer, _from, %{heartbeat_timer: timer}) do
     :timer.cancel(timer)
     timeout = %Raft.Configurations{}.heartbeat_timeout
@@ -69,8 +75,7 @@ defmodule Raft.Timer do
   def handle_info(:work, %{election_timer: timer}) do
     Logger.debug("Election timeout")
     MP.election_timer_timeout()
-    :timer.cancel(timer)
-    {:noreply, %{}}
+    {:noreply, %{election_timer: timer}}
   end
 
   def handle_info(:heartbeat, %{heartbeat_timer: timer}) do

@@ -7,11 +7,14 @@ defmodule Raft.DETS do
 
     bin = :erlang.term_to_binary(toSave)
     # TODO error catcher
-    File.write("sState", bin)
+    name = "sState" <> Atom.to_string(Node.self())
+    File.write(name, bin)
   end
 
   def fetch do
-    case File.read("sState") do
+    name = "sState" <> Atom.to_string(Node.self())
+
+    case File.read(name) do
       {:ok, value} ->
         {:ok, value |> :erlang.binary_to_term()}
 

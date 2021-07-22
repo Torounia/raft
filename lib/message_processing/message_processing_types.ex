@@ -32,7 +32,7 @@ defmodule Raft.MessageProcessing.Types do
     last_term = Helpers.log_last_term(state)
 
     broadcast_payload =
-      {:VoteRequest, {Node.self(), state.current_term, Enum.count(state.log), last_term}}
+      {:voteRequest, {Node.self(), state.current_term, Enum.count(state.log), last_term}}
 
     Comms.broadcast(
       %Raft.Configurations{}.peers,
