@@ -59,7 +59,7 @@ defmodule Raft.MessageProcessing.Helpers do
 
     entries =
       if index == Enum.count(state.log) do
-        :empty
+        []
       else
         Enum.slice(state.log, index..(Enum.count(state.log) - 1))
       end

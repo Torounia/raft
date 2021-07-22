@@ -11,6 +11,10 @@ defmodule Raft.MessageProcessing.Main do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
+  def election_timer_timeout do
+    GenServer.call(__MODULE__, :election_timer_timeout)
+  end
+
   def heartbeat_timer_timeout do
     GenServer.call(__MODULE__, :heartbeat_timer_timeout)
   end
@@ -30,6 +34,12 @@ defmodule Raft.MessageProcessing.Main do
   # callbacks
   def init(state) do
     {:ok, state}
+  end
+
+  def handle_call(:election_timer_timeout, from, state) do
+    GenServer.reply(from, :ok)
+    new_state = MP_types.canditate(state)
+    {:reply, :ok, new_state}
   end
 
   def handle_call(:heartbeat_timer_timeout, from, state) do
