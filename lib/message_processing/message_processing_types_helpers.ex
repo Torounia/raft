@@ -4,13 +4,15 @@ defmodule Raft.MessageProcessing.Helpers do
   def log_last_term(state) do
     log_length = Enum.count(state.log)
 
-    _last_term =
+    last_term =
       if log_length > 0 do
         last_log = Enum.fetch!(state.log, log_length - 1)
         last_log.term
       else
         0
       end
+
+    last_term
   end
 
   def check_quorum(state) do

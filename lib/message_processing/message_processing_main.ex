@@ -42,14 +42,13 @@ defmodule Raft.MessageProcessing.Main do
     {:reply, :ok, new_state}
   end
 
-  def handle_call(:heartbeat_timer_timeout, from, state) do
-    GenServer.reply(from, :ok)
-    new_state = MP_types.canditate(state)
+  def handle_call(:heartbeat_timer_timeout, _from, state) do
+    new_state = MP_types.heartbeat_timout(state)
     {:reply, :ok, new_state}
   end
 
-  def handle_call({:received_msg, msg}, from, state) do
-    GenServer.reply(from, :ok)
+  def handle_call({:received_msg, msg}, _from, state) do
+    # GenServer.reply(from, :ok)
 
     new_state =
       case msg do
@@ -79,7 +78,6 @@ defmodule Raft.MessageProcessing.Main do
   end
 
   def handle_call({:new_entry, msg}, from, state) do
-    GenServer.reply(from, :ok)
     Logger.debug("Received new log entry. Sending to MessageProcessing")
     new_state = MP_types.new_entry_to_log({msg, from}, state)
 

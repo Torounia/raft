@@ -1,9 +1,9 @@
 defmodule Raft.MessageProcessing.Types do
   require Logger
-  alias Raft.Timer, as: Timer
+  alias Raft.ElectionTimer, as: ElectionTimer
+  alias Raft.HeartbeatTimer, as: HeartbeatTimer
   alias Raft.MessageProcessing.Helpers, as: Helpers
   alias Raft.Comms, as: Comms
-  alias Raft.Configurations
   alias Raft.LogEnt
 
   def first_time_run(state) do
@@ -11,14 +11,14 @@ defmodule Raft.MessageProcessing.Types do
 
     if state.current_role == :follower do
       Logger.debug("Starting follower election timeout timer")
-      Timer.start_election_timer()
+      ElectionTimer.start()
     end
   end
 
   def canditate(state) do
     Logger.debug("Times is up. Starting election on node #{inspect(Node.self())}")
     Logger.debug("Starting election timer")
-    Timer.reset_timer()
+    ElectionTimer.start()
 
     state = %{
       state
@@ -49,6 +49,7 @@ defmodule Raft.MessageProcessing.Types do
     log_ok =
       if c_log_term > my_log_term or
            (c_log_term == my_log_term and c_log_length >= Enum.count(state.log)) do
+        IO.puts("1")
         true
       else
         false
@@ -57,6 +58,7 @@ defmodule Raft.MessageProcessing.Types do
     term_ok =
       if c_term > state.current_term or
            (c_term == state.current_term and (state.voted_for == c_Id or state.voted_for == nil)) do
+        IO.puts("2")
         true
       else
         false
@@ -64,12 +66,6 @@ defmodule Raft.MessageProcessing.Types do
 
     state =
       if log_ok and term_ok do
-        Comms.send_msg(
-          Node.self(),
-          c_Id,
-          {:voteResponse, {Node.self(), state.current_term, true}}
-        )
-
         state = %{
           state
           | current_term: c_term,
@@ -77,8 +73,14 @@ defmodule Raft.MessageProcessing.Types do
             voted_for: c_Id
         }
 
+        Comms.send_msg(
+          Node.self(),
+          c_Id,
+          {:voteResponse, {Node.self(), state.current_term, true}}
+        )
+
         Helpers.store_state_to_disk(state)
-        Timer.reset_timer()
+        ElectionTimer.start()
         state
       else
         Comms.send_msg(
@@ -137,9 +139,9 @@ defmodule Raft.MessageProcessing.Types do
             )
 
             state = Helpers.init_leader_state(state)
-            Timer.cancel_election_timer()
+            ElectionTimer.cancel()
             Helpers.replicate_log_all(state)
-            # TODO what is next? start heartbeat?
+            HeartbeatTimer.start()
             state
           else
             state
@@ -241,7 +243,7 @@ defmodule Raft.MessageProcessing.Types do
           {:logResponse, {Node.self(), state.current_term, acked, true}}
         )
 
-        Timer.reset_timer()
+        ElectionTimer.start()
         state
       else
         Raft.Comms.send_msg(
@@ -250,7 +252,7 @@ defmodule Raft.MessageProcessing.Types do
           {:logResponse, {Node.self(), state.current_term, 0, false}}
         )
 
-        Timer.reset_timer()
+        ElectionTimer.start()
         state
       end
 
@@ -307,8 +309,8 @@ defmodule Raft.MessageProcessing.Types do
   end
 
   def heartbeat_timout(state) do
-    Logger.debug("Sending Heartbeat Message")
+    Logger.debug("HeartBeat Timeout")
     Helpers.replicate_log_all(state)
-    Timer.reset_heartbeat_timer()
+    HeartbeatTimer.reset()
   end
 end
