@@ -9,36 +9,38 @@ defmodule Raft.HeartbeatTimer do
   end
 
   def start() do
-    GenServer.call(__MODULE__, :start_heartbeat_timer)
+    GenServer.cast(__MODULE__, :start_heartbeat_timer)
   end
 
   def reset() do
-    GenServer.call(__MODULE__, :reset_heartbeat_timer)
+    GenServer.cast(__MODULE__, :reset_heartbeat_timer)
   end
 
   def init(%{}) do
-    {:ok, %{}}
+    {:ok, %{heartbeat_timer: nil}}
   end
 
-  def handle_call(:start_heartbeat_timer, _from, %{}) do
+  def handle_cast(:start_heartbeat_timer, %{heartbeat_timer: nil}) do
     timeout = %Raft.Configurations{}.heartbeat_timeout
     timer = Process.send_after(__MODULE__, :heartbeat, timeout)
-    Logger.debug("Heartbeat timer start")
-    {:reply, :ok, %{heartbeat_timer: timer}}
+    Logger.debug("Starting Heartbeat timer: #{inspect(timer)}")
+    {:noreply, %{heartbeat_timer: timer}}
   end
 
-  def handle_call(:reset_heartbeat_timer, _from, %{heartbeat_timer: timer}) do
-    :timer.cancel(timer)
+  def handle_cast(:reset_heartbeat_timer, %{heartbeat_timer: timer}) do
+    Logger.debug("Reseting Heartbeat timer: #{inspect(timer)}")
+    Process.cancel_timer(timer)
     timeout = %Raft.Configurations{}.heartbeat_timeout
-    timer = Process.send_after(__MODULE__, :heartbeat, timeout)
-    Logger.debug("Reseting Heartbeat timer")
-    {:reply, :ok, %{heartbeat_timer: timer}}
+    new_timer = Process.send_after(__MODULE__, :heartbeat, timeout)
+    Logger.debug("Starting Heartbeat timer: #{inspect(new_timer)}")
+    {:noreply, %{heartbeat_timer: new_timer}}
   end
 
   def handle_info(:heartbeat, %{heartbeat_timer: timer}) do
-    Logger.debug("Heartbeat timeout")
+    Logger.debug("Heartbeat timeout for timer: #{inspect(timer)}")
+    Process.cancel_timer(timer)
     MP.heartbeat_timer_timeout()
-    :timer.cancel(timer)
     {:noreply, %{heartbeat_timer: nil}}
   end
+
 end

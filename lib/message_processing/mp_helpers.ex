@@ -45,15 +45,17 @@ defmodule Raft.MessageProcessing.Helpers do
       commit_length: state.commit_length
     }
 
-    case Raft.DETS.store(state_to_save) do
-      :ok -> Logger.debug("State saved to disk")
-      {:error, type} -> Logger.debug("Error while saving state to disk: #{inspect(type)}")
-    end
+    # case Raft.DETS.store(state_to_save) do
+    #   :ok -> Logger.debug("State saved to disk")
+    #   {:error, type} -> Logger.debug("Error while saving state to disk: #{inspect(type)}")
+    # end
+    state
   end
 
   def replicate_log_all(state) do
     nodes_not_self = Enum.filter(state.peers, fn node -> node != Node.self() end)
     for node <- nodes_not_self, do: replicate_log_single(node, state)
+    state
   end
 
   def replicate_log_single(follower_id, state) do
@@ -79,6 +81,8 @@ defmodule Raft.MessageProcessing.Helpers do
       {:logRequest,
        {Node.self(), state.current_term, index, prev_log_term, state.commit_length, entries}}
     )
+
+    state
   end
 
   def append_entries(log_length, leader_commit, entries, state) do

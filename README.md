@@ -5,6 +5,10 @@ Add description
 check for naming convention
 check for error catches
 
+Election timer timeouts while on leader state. Set a clause catcher inside candidate state, to exit the function or fix within the timer service. THis seems to be ok. More investigation to understand why cancelling timer 2 when only 1 timer started.
+
+There seems to be a fault with election timer reset while in follower state. Election timeouts on followers and they start election. To check
+
         
 
 ## Installation
