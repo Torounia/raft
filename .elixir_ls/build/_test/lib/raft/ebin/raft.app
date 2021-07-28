@@ -1,5 +1,5 @@
 {application,raft,
-             [{applications,[kernel,stdlib,elixir,logger]},
+             [{applications,[kernel,stdlib,elixir,logger,logger_file_backend]},
               {description,"raft"},
               {modules,['Elixir.BestEffortBC','Elixir.Raft',
                         'Elixir.Raft.ClusterConfig','Elixir.Raft.Comms',

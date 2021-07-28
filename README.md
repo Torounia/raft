@@ -7,8 +7,9 @@ check for error catches
 
 Election timer timeouts while on leader state. Set a clause catcher inside candidate state, to exit the function or fix within the timer service. THis seems to be ok. More investigation to understand why cancelling timer 2 when only 1 timer started.
 
-There seems to be a fault with election timer reset while in follower state. Election timeouts on followers and they start election. To check
+There seems to be a fault with election timer reset while in follower state. Election timeouts on followers and they start election. To check -  fixed. Raft is stable
 
+28/07: Fixed election timer and heartbeat timer. Added log to file and log to console. Next: improve info logging and build a client to send cmds to the logger. Start building the testing functions
         
 
 ## Installation
