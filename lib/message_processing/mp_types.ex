@@ -16,29 +16,40 @@ defmodule Raft.MessageProcessing.Types do
   end
 
   def canditate(state) do
-    Logger.debug("Times is up. Starting election on node #{inspect(Node.self())}")
-    Logger.debug("Starting election timer")
-    ElectionTimer.start()
+    state =
+      if state.current_role != :leader do
+        Logger.debug("Times is up. Starting election on node #{inspect(Node.self())}")
+        Logger.debug("Starting election timer")
+        ElectionTimer.start()
 
-    state = %{
-      state
-      | current_term: state.current_term + 1,
-        current_role: :candidate,
-        voted_for: Node.self(),
-        votes_received: [Node.self() | state.votes_received] |> Enum.reverse()
-    }
+        state = %{
+          state
+          | current_term: state.current_term + 1,
+            current_role: :candidate,
+            voted_for: Node.self(),
+            votes_received: [Node.self() | state.votes_received] |> Enum.reverse()
+        }
 
-    Helpers.store_state_to_disk(state)
-    last_term = Helpers.log_last_term(state)
+        Helpers.store_state_to_disk(state)
+        last_term = Helpers.log_last_term(state)
 
-    broadcast_payload =
-      {:voteRequest, {Node.self(), state.current_term, Enum.count(state.log), last_term}}
+        broadcast_payload =
+          {:voteRequest, {Node.self(), state.current_term, Enum.count(state.log), last_term}}
 
-    Comms.broadcast(
-      %Raft.Configurations{}.peers,
-      Node.self(),
-      broadcast_payload
-    )
+        Comms.broadcast(
+          %Raft.Configurations{}.peers,
+          Node.self(),
+          broadcast_payload
+        )
+
+        state
+      else
+        Logger.error(
+          "Error. Running election while on leader role. Current state #{inspect(state)}"
+        )
+
+        state
+      end
 
     state
   end
@@ -49,7 +60,6 @@ defmodule Raft.MessageProcessing.Types do
     log_ok =
       if c_log_term > my_log_term or
            (c_log_term == my_log_term and c_log_length >= Enum.count(state.log)) do
-        IO.puts("1")
         true
       else
         false
@@ -58,7 +68,6 @@ defmodule Raft.MessageProcessing.Types do
     term_ok =
       if c_term > state.current_term or
            (c_term == state.current_term and (state.voted_for == c_Id or state.voted_for == nil)) do
-        IO.puts("2")
         true
       else
         false
@@ -96,7 +105,7 @@ defmodule Raft.MessageProcessing.Types do
   end
 
   def vote_response({voter_id, term, granded}, state) do
-    Logger.debug("Entry - vote_response. state: #{inspect(state)}")
+    # Logger.debug("Entry - vote_response. state: #{inspect(state)}")
 
     state =
       if term > state.current_term do
@@ -152,12 +161,12 @@ defmodule Raft.MessageProcessing.Types do
         state
       end
 
-    Logger.debug("Exit - vote_response. state: #{inspect(state)}")
+    # Logger.debug("Exit - vote_response. state: #{inspect(state)}")
     state
   end
 
-  def new_entry_to_log({entry, from}, state) do
-    Logger.debug("Entry - new_entry_to_log. state: #{inspect(state)}")
+  def new_entry_to_log(entry, state) do
+    # Logger.debug("Entry - new_entry_to_log. state: #{inspect(state)}")
 
     state =
       if state.current_role == :leader do
@@ -180,9 +189,7 @@ defmodule Raft.MessageProcessing.Types do
 
     if state.current_role == :follower or state.current_role == :candidate do
       Logger.debug(
-        "Received new log entry request from #{inspect(from)}. Current role #{
-          inspect(state.current_role)
-        } Sending to leader"
+        "Received new log entry request. Current role #{inspect(state.current_role)} Sending to leader"
       )
 
       Comms.send_msg(
@@ -193,12 +200,12 @@ defmodule Raft.MessageProcessing.Types do
       )
     end
 
-    Logger.debug("Exit - new_entry_to_log. state: #{inspect(state)}")
+    # Logger.debug("Exit - new_entry_to_log. state: #{inspect(state)}")
     state
   end
 
   def log_request({leader_id, term, log_length, log_term, leader_commit, entries}, state) do
-    Logger.debug("Entry - log_request. state: #{inspect(state)}")
+    # Logger.debug("Entry - log_request. state: #{inspect(state)}")
 
     state =
       if term > state.current_term do
@@ -256,11 +263,13 @@ defmodule Raft.MessageProcessing.Types do
         state
       end
 
-    Logger.debug("Exit - log_request. state: #{inspect(state)}")
+    # Logger.debug("Exit - log_request. state: #{inspect(state)}")
     state
   end
 
   def log_response({follower, term, ack, success}, state) do
+    # Logger.debug("Entry - log_response. state: #{inspect(state)}")
+
     state =
       if term == state.current_term and state.current_role == :leader do
         if success == true and ack >= Map.get(state.acked_length, follower) do
@@ -305,12 +314,13 @@ defmodule Raft.MessageProcessing.Types do
         state
       end
 
+    # Logger.debug("Exit - log_response. state: #{inspect(state)}")
     state
   end
 
   def heartbeat_timout(state) do
     Logger.debug("HeartBeat Timeout")
     Helpers.replicate_log_all(state)
-    HeartbeatTimer.reset()
+    HeartbeatTimer.start()
   end
 end

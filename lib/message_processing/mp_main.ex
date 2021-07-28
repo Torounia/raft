@@ -12,11 +12,11 @@ defmodule Raft.MessageProcessing.Main do
   end
 
   def election_timer_timeout do
-    GenServer.call(__MODULE__, :election_timer_timeout)
+    GenServer.cast(__MODULE__, :election_timer_timeout)
   end
 
   def heartbeat_timer_timeout do
-    GenServer.call(__MODULE__, :heartbeat_timer_timeout)
+    GenServer.cast(__MODULE__, :heartbeat_timer_timeout)
   end
 
   def first_time_run do
@@ -24,11 +24,11 @@ defmodule Raft.MessageProcessing.Main do
   end
 
   def received_msg(msg) do
-    GenServer.call(__MODULE__, {:received_msg, msg})
+    GenServer.cast(__MODULE__, {:received_msg, msg})
   end
 
   def new_entry(msg) do
-    GenServer.call(__MODULE__, {:new_entry, msg})
+    GenServer.cast(__MODULE__, {:new_entry, msg})
   end
 
   # callbacks
@@ -36,20 +36,17 @@ defmodule Raft.MessageProcessing.Main do
     {:ok, state}
   end
 
-  def handle_call(:election_timer_timeout, from, state) do
-    GenServer.reply(from, :ok)
+  def handle_cast(:election_timer_timeout, state) do
     new_state = MP_types.canditate(state)
-    {:reply, :ok, new_state}
+    {:noreply, new_state}
   end
 
-  def handle_call(:heartbeat_timer_timeout, _from, state) do
-    new_state = MP_types.heartbeat_timout(state)
-    {:reply, :ok, new_state}
+  def handle_cast(:heartbeat_timer_timeout, state) do
+    MP_types.heartbeat_timout(state)
+    {:noreply, state}
   end
 
-  def handle_call({:received_msg, msg}, _from, state) do
-    # GenServer.reply(from, :ok)
-
+  def handle_cast({:received_msg, msg}, state) do
     new_state =
       case msg do
         {:voteRequest, payload} ->
@@ -74,14 +71,14 @@ defmodule Raft.MessageProcessing.Main do
       end
 
     # Logger.debug("New state = #{inspect(new_state)}")
-    {:reply, :ok, new_state}
+    {:noreply, new_state}
   end
 
-  def handle_call({:new_entry, msg}, from, state) do
+  def handle_cast({:new_entry, msg}, state) do
     Logger.debug("Received new log entry. Sending to MessageProcessing")
-    new_state = MP_types.new_entry_to_log({msg, from}, state)
+    new_state = MP_types.new_entry_to_log(msg, state)
 
-    {:reply, :ok, new_state}
+    {:noreply, new_state}
   end
 
   def handle_info(:first_time_run, state) do
