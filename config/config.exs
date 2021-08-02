@@ -7,8 +7,10 @@ config :logger,
 
 config :logger, :console, level: :info
 
+debug_filename = Atom.to_string(Node.self()) <> "_debug.log"
+
 config :logger, :error_log,
-  path: "debug.log",
+  path: debug_filename,
   level: :debug
 
 # metadata: [:node, :mfa, :pid, :registered_name]

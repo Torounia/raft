@@ -20,21 +20,33 @@ defmodule Raft.HeartbeatTimer do
     {:ok, %{heartbeat_timer: nil}}
   end
 
-  def handle_cast(:start_heartbeat_timer, %{heartbeat_timer: nil}) do
-    timeout = %Raft.Configurations{}.heartbeat_timeout
-    timer = Process.send_after(__MODULE__, :heartbeat, timeout)
-    Logger.debug("Starting Heartbeat timer: #{inspect(timer)}")
-    {:noreply, %{heartbeat_timer: timer}}
-  end
+  def handle_cast(:start_heartbeat_timer, %{heartbeat_timer: timer}) do
+    new_timer = if timer == nil do
+      Logger.debug("No heartbeat timer to reset. Starting new heartbeat timer")
+      timeout = %Raft.Configurations{}.heartbeat_timeout
+      new_timer = Process.send_after(__MODULE__, :heartbeat, timeout)
+      Logger.debug("New heartbeat timer #{inspect(new_timer)}")
+      new_timer
+    else
+      Logger.debug("Cancelling election timer #{inspect(timer)}")
+      Process.cancel_timer(timer)
+      timeout = %Raft.Configurations{}.heartbeat_timeout
+      new_timer = Process.send_after(__MODULE__, :heartbeat, timeout)
+      Logger.debug("New timer heartbeat timer #{inspect(new_timer)}")
+      new_timer
+    end
 
-  def handle_cast(:reset_heartbeat_timer, %{heartbeat_timer: timer}) do
-    Logger.debug("Reseting Heartbeat timer: #{inspect(timer)}")
-    Process.cancel_timer(timer)
-    timeout = %Raft.Configurations{}.heartbeat_timeout
-    new_timer = Process.send_after(__MODULE__, :heartbeat, timeout)
-    Logger.debug("Starting Heartbeat timer: #{inspect(new_timer)}")
     {:noreply, %{heartbeat_timer: new_timer}}
   end
+
+  # def handle_cast(:reset_heartbeat_timer, %{heartbeat_timer: timer}) do
+  #   Logger.debug("Reseting Heartbeat timer: #{inspect(timer)}")
+  #   Process.cancel_timer(timer)
+  #   timeout = %Raft.Configurations{}.heartbeat_timeout
+  #   new_timer = Process.send_after(__MODULE__, :heartbeat, timeout)
+  #   Logger.debug("Starting Heartbeat timer: #{inspect(new_timer)}")
+  #   {:noreply, %{heartbeat_timer: new_timer}}
+  # end
 
   def handle_info(:heartbeat, %{heartbeat_timer: timer}) do
     Logger.debug("Heartbeat timeout for timer: #{inspect(timer)}")

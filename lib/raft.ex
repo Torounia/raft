@@ -27,6 +27,7 @@ defmodule Raft do
 
     else
       Logger.error("Error, not all children processes started properly.")
+
     end
 
 

@@ -45,10 +45,11 @@ defmodule Raft.MessageProcessing.Helpers do
       commit_length: state.commit_length
     }
 
-    # case Raft.DETS.store(state_to_save) do
-    #   :ok -> Logger.debug("State saved to disk")
-    #   {:error, type} -> Logger.debug("Error while saving state to disk: #{inspect(type)}")
-    # end
+    case Raft.DETS.store(state_to_save) do
+      :ok -> Logger.debug("State saved to disk")
+      {:error, type} -> Logger.debug("Error while saving state to disk: #{inspect(type)}")
+    end
+
     state
   end
 
@@ -86,19 +87,36 @@ defmodule Raft.MessageProcessing.Helpers do
   end
 
   def append_entries(log_length, leader_commit, entries, state) do
+    Logger.debug("Append Entries #{inspect(entries)}, log length: #{inspect(log_length)}")
+
     state =
       if Enum.count(entries) > 0 and Enum.count(state.log) > log_length do
-        if Enum.fetch!(state.log, log_length).term != Enum.fetch!(entries, 0).term do
-          %{state | log: Enum.slice(state.log, 0..(log_length - 1))}
-        end
+        state =
+          if Enum.fetch!(state.log, log_length).term != Enum.fetch!(entries, 0).term do
+            %{state | log: Enum.slice(state.log, 0..(log_length - 1))}
+          else
+            state
+          end
+
+        state
       else
         state
       end
 
+    Logger.debug("log_length: #{inspect(log_length)}")
+    Logger.debug("Enum.count(entries): #{inspect(Enum.count(entries))}")
+    Logger.debug("Enum.count(state.log): #{inspect(Enum.count(state.log))}")
+
     state =
       if log_length + Enum.count(entries) > Enum.count(state.log) do
-        log_to_append =
-          Enum.slice(state.log, (Enum.count(state.log) - log_length)..Enum.count(entries - 1))
+        Logger.debug("log_length + Enum.count(entries) > Enum.count(state.log) is TRUE")
+
+        range = (Enum.count(state.log) - log_length)..(Enum.count(entries) - 1)
+        Logger.debug("enum/slice range: #{inspect(range)}")
+
+        log_to_append = Enum.slice(entries, range)
+
+        Logger.debug("log_to_append: #{inspect(log_to_append)}")
 
         %{state | log: state.log ++ log_to_append}
       else

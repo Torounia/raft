@@ -10,7 +10,8 @@ defmodule Raft.MessageProcessing.Types do
     Logger.debug("First time run state #{inspect(state)}")
 
     if state.current_role == :follower do
-      Logger.debug("Starting follower election timeout timer")
+      Logger.debug("Starting follower election timer")
+      Logger.debug("MP-types election timer entry point: 1")
       ElectionTimer.start()
     end
   end
@@ -18,8 +19,8 @@ defmodule Raft.MessageProcessing.Types do
   def canditate(state) do
     state =
       if state.current_role != :leader do
-        Logger.debug("Times is up. Starting election on node #{inspect(Node.self())}")
-        Logger.debug("Starting election timer")
+        Logger.info("Election timer is up. Starting election on node #{inspect(Node.self())}")
+        Logger.debug("MP-types election timer entry point: 2")
         ElectionTimer.start()
 
         state = %{
@@ -82,13 +83,15 @@ defmodule Raft.MessageProcessing.Types do
             voted_for: c_Id
         }
 
+        Helpers.store_state_to_disk(state)
+
         Comms.send_msg(
           Node.self(),
           c_Id,
           {:voteResponse, {Node.self(), state.current_term, true}}
         )
 
-        Helpers.store_state_to_disk(state)
+        Logger.debug("MP-types election timer entry point: 3")
         ElectionTimer.start()
         state
       else
@@ -105,7 +108,7 @@ defmodule Raft.MessageProcessing.Types do
   end
 
   def vote_response({voter_id, term, granded}, state) do
-    # Logger.debug("Entry - vote_response. state: #{inspect(state)}")
+    Logger.debug("Entry - vote_response. state: #{inspect(state)}")
 
     state =
       if term > state.current_term do
@@ -119,9 +122,6 @@ defmodule Raft.MessageProcessing.Types do
             current_role: :follower,
             voted_for: nil
         }
-
-        ## TODO seperate timers
-        # Timer.reset_timer()
       else
         state
       end
@@ -148,6 +148,7 @@ defmodule Raft.MessageProcessing.Types do
             )
 
             state = Helpers.init_leader_state(state)
+            Helpers.store_state_to_disk(state)
             ElectionTimer.cancel()
             Helpers.replicate_log_all(state)
             HeartbeatTimer.start()
@@ -161,12 +162,12 @@ defmodule Raft.MessageProcessing.Types do
         state
       end
 
-    # Logger.debug("Exit - vote_response. state: #{inspect(state)}")
+    Logger.debug("Exit - vote_response. state: #{inspect(state)}")
     state
   end
 
   def new_entry_to_log(entry, state) do
-    # Logger.debug("Entry - new_entry_to_log. state: #{inspect(state)}")
+    Logger.debug("Entry - new_entry_to_log. state: #{inspect(state)}")
 
     state =
       if state.current_role == :leader do
@@ -200,12 +201,12 @@ defmodule Raft.MessageProcessing.Types do
       )
     end
 
-    # Logger.debug("Exit - new_entry_to_log. state: #{inspect(state)}")
+    Logger.debug("Exit - new_entry_to_log. state: #{inspect(state)}")
     state
   end
 
   def log_request({leader_id, term, log_length, log_term, leader_commit, entries}, state) do
-    # Logger.debug("Entry - log_request. state: #{inspect(state)}")
+    Logger.debug("Entry - log_request. state: #{inspect(state)}")
 
     state =
       if term > state.current_term do
@@ -244,31 +245,37 @@ defmodule Raft.MessageProcessing.Types do
         state = Helpers.append_entries(log_length, leader_commit, entries, state)
         acked = log_length + Enum.count(entries)
 
+        Helpers.store_state_to_disk(state)
+
         Raft.Comms.send_msg(
           Node.self(),
           leader_id,
           {:logResponse, {Node.self(), state.current_term, acked, true}}
         )
 
+        Logger.debug("MP-types election timer entry point: 4")
         ElectionTimer.start()
         state
       else
+        Helpers.store_state_to_disk(state)
+
         Raft.Comms.send_msg(
           Node.self(),
           leader_id,
           {:logResponse, {Node.self(), state.current_term, 0, false}}
         )
 
+        Logger.debug("MP-types election timer entry point: 5")
         ElectionTimer.start()
         state
       end
 
-    # Logger.debug("Exit - log_request. state: #{inspect(state)}")
+    Logger.debug("Exit - log_request. state: #{inspect(state)}")
     state
   end
 
   def log_response({follower, term, ack, success}, state) do
-    # Logger.debug("Entry - log_response. state: #{inspect(state)}")
+    Logger.debug("Entry - log_response. state: #{inspect(state)}")
 
     state =
       if term == state.current_term and state.current_role == :leader do
@@ -290,6 +297,7 @@ defmodule Raft.MessageProcessing.Types do
                     Map.put(state.sent_length, follower, Map.get(state.sent_length, follower) - 1)
               }
 
+              Helpers.store_state_to_disk(state)
               Helpers.replicate_log_single(follower, state)
               state
             else
@@ -311,10 +319,11 @@ defmodule Raft.MessageProcessing.Types do
             state
           end
 
+        Helpers.store_state_to_disk(state)
         state
       end
 
-    # Logger.debug("Exit - log_response. state: #{inspect(state)}")
+    Logger.debug("Exit - log_response. state: #{inspect(state)}")
     state
   end
 

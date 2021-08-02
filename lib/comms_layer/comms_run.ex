@@ -56,10 +56,10 @@ defmodule Raft.Comms do
   end
 
   def handle_info(something, :ok) do
-    Logger.debug("Received something #{inspect(something)}**********************************")
+    Logger.debug("Received something #{inspect(something)}")
   end
 
   def handle_info({something, :ok}, _) do
-    Logger.debug("Received something #{inspect(something)}##########################")
+    Logger.debug("Received something #{inspect(something)}")
   end
 end
