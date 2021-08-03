@@ -4,4 +4,12 @@ There seems to be a fault with election timer reset while in follower state. Ele
 
 28/07: Fixed election timer and heartbeat timer. Added log to file and log to console. Next: improve info logging and build a client to send cmds to the logger. Start building the testing functions
 
-29/07: Upon enabling save to disk function, there are random election timeouts from other peers. To Fix
+29/07: Upon enabling save to disk function, there are random election timeouts from other peers. To fix.
+
+31/07 Update on the above, probably need to redesign and make the save to disk a separate processes. Fixed couple of bugs. See git commit
+
+2/08 Fixed More bugs. See commit
+
+3/08 New bug, starting the node on peer1 console gives error with DETS reading. seems like the file name cannot be concatenated and passed to the binery.to term method. Eveything seems to be working after restarting the device
+
+3/08 new bug, message to application keeps triggering. Fixed, added %{state | commit_length: leader_commit} to followers append entries function

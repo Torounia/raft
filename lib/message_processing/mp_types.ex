@@ -190,7 +190,9 @@ defmodule Raft.MessageProcessing.Types do
 
     if state.current_role == :follower or state.current_role == :candidate do
       Logger.debug(
-        "Received new log entry request. Current role #{inspect(state.current_role)} Sending to leader"
+        "Received new log entry request. Current role #{inspect(state.current_role)} Sending to leader: #{
+          inspect(state.current_leader)
+        }"
       )
 
       Comms.send_msg(

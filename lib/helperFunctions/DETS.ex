@@ -1,4 +1,6 @@
 defmodule Raft.DETS do
+  require Logger
+
   def store(val) do
     toSave = %{
       lastWriteUTC: DateTime.utc_now(),
@@ -13,6 +15,8 @@ defmodule Raft.DETS do
 
   def fetch do
     name = "sState" <> Atom.to_string(Node.self())
+
+    Logger.debug("Fetching binary file from local storage for #{inspect(name)}")
 
     case File.read(name) do
       {:ok, value} ->

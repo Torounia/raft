@@ -69,7 +69,7 @@ defmodule Raft.ElectionTimer do
   end
 
   def handle_cast(:show_status, %{election_timer: timer, timerID: timer_ID}) do
-    Logger.debug("Election timeout Genserver status: #{inspect(timer)}, ID: #{inspect(timer_ID)}")
+    Logger.debug("Election timer Genserver status: #{inspect(timer)}, ID: #{inspect(timer_ID)}")
     {:noreply, %{election_timer: timer, timerID: timer_ID}}
   end
 

@@ -103,7 +103,6 @@ defmodule Raft.MessageProcessing.Helpers do
         state
       end
 
-    Logger.debug("log_length: #{inspect(log_length)}")
     Logger.debug("Enum.count(entries): #{inspect(Enum.count(entries))}")
     Logger.debug("Enum.count(state.log): #{inspect(Enum.count(state.log))}")
 
@@ -126,7 +125,9 @@ defmodule Raft.MessageProcessing.Helpers do
     state =
       if leader_commit > state.commit_length do
         msg_to_deliver = Enum.slice(state.log, state.commit_length..(leader_commit - 1))
+        # TODO Deliver message to application
         for msg <- msg_to_deliver, do: Logger.debug("Message to application #{inspect(msg.cmd)}")
+        %{state | commit_length: leader_commit}
       else
         state
       end

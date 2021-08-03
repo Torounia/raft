@@ -3,7 +3,7 @@ import Config
 config :logger,
   backends: [:console, {LoggerFileBackend, :error_log}],
   format: {Raft.LogFormatter, :format},
-  metadata: [:node]
+  metadata: [:node, :mfa]
 
 config :logger, :console, level: :info
 
