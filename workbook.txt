@@ -13,3 +13,7 @@ There seems to be a fault with election timer reset while in follower state. Ele
 3/08 New bug, starting the node on peer1 console gives error with DETS reading. seems like the file name cannot be concatenated and passed to the binery.to term method. Eveything seems to be working after restarting the device
 
 3/08 new bug, message to application keeps triggering. Fixed, added %{state | commit_length: leader_commit} to followers append entries function
+
+3/08 State.current_leader is nil after election and not updating properly after new election. False observation. current state updates properly.
+5/08 Algorithm not very stable with low election timers. Disabled save to disk function to test. Increased to 100ms heartbeat timer interval and 400 to 600 election timer interval. With higher timer intervals the algorithm seems to be ok.  
+6/08 After running the algorithm for prolong time, it is observed that Election timer won't start when called from log request function. Investigating.

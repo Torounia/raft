@@ -48,8 +48,8 @@ defmodule Raft.InitStateVar do
 
     case DETS.fetch() do
       {:ok, stateFromFile} ->
-        Logger.debug("Found stable state on disk dated: #{inspect(stateFromFile.lastWriteUTC)}")
-        Logger.debug("Previous State on disk: #{inspect(stateFromFile.data)}")
+        Logger.info("Found stable state on disk dated: #{inspect(stateFromFile.lastWriteUTC)}")
+        Logger.info("Previous State on disk: #{inspect(stateFromFile.data)}")
         stateFromFile.data
 
       {:error, :enoent} ->

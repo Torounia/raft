@@ -126,7 +126,7 @@ defmodule Raft.MessageProcessing.Helpers do
       if leader_commit > state.commit_length do
         msg_to_deliver = Enum.slice(state.log, state.commit_length..(leader_commit - 1))
         # TODO Deliver message to application
-        for msg <- msg_to_deliver, do: Logger.debug("Message to application #{inspect(msg.cmd)}")
+        for msg <- msg_to_deliver, do: Logger.info("Message to application #{inspect(msg.cmd)}")
         %{state | commit_length: leader_commit}
       else
         state
@@ -145,7 +145,7 @@ defmodule Raft.MessageProcessing.Helpers do
              state.current_term do
         msg_to_deliver = Enum.slice(state.log, state.commit_length..(Enum.max(ready) - 1))
 
-        for msg <- msg_to_deliver, do: Logger.debug("Message to application #{inspect(msg.cmd)}")
+        for msg <- msg_to_deliver, do: Logger.info("Message to application #{inspect(msg.cmd)}")
         %{state | commit_length: Enum.max(ready)}
       else
         state

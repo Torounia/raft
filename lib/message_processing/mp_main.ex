@@ -27,6 +27,11 @@ defmodule Raft.MessageProcessing.Main do
     GenServer.cast(__MODULE__, {:received_msg, msg})
   end
 
+  def show_current_state() do
+    state = GenServer.call(__MODULE__, :show_current_state)
+    state
+  end
+
   def new_entry(msg) do
     GenServer.cast(__MODULE__, {:new_entry, msg})
   end
@@ -34,6 +39,11 @@ defmodule Raft.MessageProcessing.Main do
   # callbacks
   def init(state) do
     {:ok, state}
+  end
+
+  def handle_call(:show_current_state, _from, state) do
+    # Logger.info("Current state: #{inspect(state)}")
+    {:reply, state, state}
   end
 
   def handle_cast(:election_timer_timeout, state) do

@@ -112,7 +112,7 @@ defmodule Raft.MessageProcessing.Types do
 
     state =
       if term > state.current_term do
-        Logger.debug(
+        Logger.info(
           "Received higher term #{inspect(term)} from voter #{inspect(voter_id)}. Transitioning to :follower"
         )
 
@@ -143,7 +143,7 @@ defmodule Raft.MessageProcessing.Types do
 
         state =
           if Helpers.check_quorum(state) do
-            Logger.debug(
+            Logger.info(
               "Got majority of votes required for term: #{inspect(state.current_term)}. Transitioning to :leader state."
             )
 
@@ -208,28 +208,46 @@ defmodule Raft.MessageProcessing.Types do
   end
 
   def log_request({leader_id, term, log_length, log_term, leader_commit, entries}, state) do
-    Logger.debug("Entry - log_request. state: #{inspect(state)}")
+    # for debbuging purposes
+    uniq_ref = make_ref()
+    Logger.debug("Entry - log_request. uniq_ref: #{inspect(uniq_ref)}  state: #{inspect(state)}")
 
     state =
       if term > state.current_term do
-        %{
+        state = %{
           state
           | current_term: term,
             voted_for: nil,
             current_role: :follower,
             current_leader: leader_id
         }
+
+        Logger.debug(
+          "Term #{inspect(term)} is > than current term #{inspect(state.current_term)} .Updating state. #{
+            inspect(state)
+          }"
+        )
+
+        state
       else
         state
       end
 
     state =
       if term == state.current_term and state.current_role == :candidate do
-        %{
+        state = %{
           state
           | current_role: :follower,
             current_leader: leader_id
         }
+
+        Logger.debug(
+          "Term #{inspect(term)} == current term #{inspect(state.current_term)} and current role is == #{
+            inspect(state.current_role)
+          }  .Updating state. #{inspect(state)}"
+        )
+
+        state
       else
         state
       end
@@ -237,6 +255,7 @@ defmodule Raft.MessageProcessing.Types do
     log_ok =
       if Enum.count(state.log) >= log_length and
            (log_length == 0 or log_term == Enum.fetch!(state.log, log_length - 1).term) do
+        Logger.debug("log_ok is TRUE")
         true
       else
         false
@@ -244,9 +263,17 @@ defmodule Raft.MessageProcessing.Types do
 
     state =
       if term == state.current_term and log_ok do
+        state = %{
+          state
+          | current_role: :follower,
+            current_leader: leader_id
+        }
+
+        Logger.debug("Term == current term and log_ok. Appending entries to the log")
         state = Helpers.append_entries(log_length, leader_commit, entries, state)
         acked = log_length + Enum.count(entries)
 
+        Logger.debug("Term == current term and log_ok. Saving state to disk")
         Helpers.store_state_to_disk(state)
 
         Raft.Comms.send_msg(
@@ -256,7 +283,16 @@ defmodule Raft.MessageProcessing.Types do
         )
 
         Logger.debug("MP-types election timer entry point: 4")
-        ElectionTimer.start()
+
+        case ElectionTimer.start() do
+          :ok_timer_started ->
+            Logger.debug("Election timer started")
+
+          _ ->
+            Logger.debug("Election timer not started. Trying again")
+            ElectionTimer.start()
+        end
+
         state
       else
         Helpers.store_state_to_disk(state)
@@ -272,12 +308,14 @@ defmodule Raft.MessageProcessing.Types do
         state
       end
 
-    Logger.debug("Exit - log_request. state: #{inspect(state)}")
+    Logger.debug("Exit - log_request. uniq_ref: #{inspect(uniq_ref)}. state: #{inspect(state)}")
     state
   end
 
   def log_response({follower, term, ack, success}, state) do
-    Logger.debug("Entry - log_response. state: #{inspect(state)}")
+    uniq_ref = make_ref()
+
+    Logger.debug("Entry - log_response. uniq_ref: #{inspect(uniq_ref)}. state: #{inspect(state)}")
 
     state =
       if term == state.current_term and state.current_role == :leader do
@@ -325,7 +363,7 @@ defmodule Raft.MessageProcessing.Types do
         state
       end
 
-    Logger.debug("Exit - log_response. state: #{inspect(state)}")
+    Logger.debug("Exit - log_response. uniq_ref: #{inspect(uniq_ref)}. state: #{inspect(state)}")
     state
   end
 

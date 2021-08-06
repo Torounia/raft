@@ -27,7 +27,6 @@ defmodule Raft do
 
     else
       Logger.error("Error, not all children processes started properly.")
-
     end
 
 
@@ -37,8 +36,23 @@ defmodule Raft do
     Main.first_time_run()
   end
 
-  def add_new_cmd(cmd) do
+  def add_to_log(cmd) do
     Main.new_entry(cmd)
+  end
+
+  def current_state() do
+    state = Main.show_current_state()
+    Logger.info(inspect(state))
+  end
+
+  def current_leader() do
+    state = Main.show_current_state()
+    Logger.info(inspect(state.current_leader))
+  end
+
+  def current_log() do
+    state = Main.show_current_state()
+    Logger.info(inspect(state.log))
   end
 
 end
