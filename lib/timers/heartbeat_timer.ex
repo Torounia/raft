@@ -50,7 +50,9 @@ defmodule Raft.HeartbeatTimer do
 
   def handle_info(:heartbeat, %{heartbeat_timer: timer}) do
     Logger.debug("Heartbeat timeout for timer: #{inspect(timer)}")
-    Process.cancel_timer(timer)
+    if timer != nil do
+      Process.cancel_timer(timer)
+    end
     MP.heartbeat_timer_timeout()
     {:noreply, %{heartbeat_timer: nil}}
   end

@@ -26,6 +26,10 @@ defmodule Raft.Supervisor do
       %{
         id: Raft.HeartbeatTimer,
         start: {Raft.HeartbeatTimer, :start_link, []}
+      },
+      %{
+        id: Raft.StateToDisk,
+        start: {Raft.StateToDisk, :start_link, []}
       }
     ]
 

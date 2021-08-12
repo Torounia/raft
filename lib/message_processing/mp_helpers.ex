@@ -37,21 +37,21 @@ defmodule Raft.MessageProcessing.Helpers do
     state
   end
 
-  def store_state_to_disk(state) do
-    state_to_save = %{
-      current_term: state.current_term,
-      voted_for: state.voted_for,
-      log: state.log,
-      commit_length: state.commit_length
-    }
+  # def store_state_to_disk(state) do
+  #   state_to_save = %{
+  #     current_term: state.current_term,
+  #     voted_for: state.voted_for,
+  #     log: state.log,
+  #     commit_length: state.commit_length
+  #   }
 
-    case Raft.DETS.store(state_to_save) do
-      :ok -> Logger.debug("State saved to disk")
-      {:error, type} -> Logger.debug("Error while saving state to disk: #{inspect(type)}")
-    end
+  #   case Raft.DETS.store(state_to_save) do
+  #     :ok -> Logger.debug("State saved to disk")
+  #     {:error, type} -> Logger.debug("Error while saving state to disk: #{inspect(type)}")
+  #   end
 
-    state
-  end
+  #   state
+  # end
 
   def replicate_log_all(state) do
     nodes_not_self = Enum.filter(state.peers, fn node -> node != Node.self() end)
@@ -87,7 +87,11 @@ defmodule Raft.MessageProcessing.Helpers do
   end
 
   def append_entries(log_length, leader_commit, entries, state) do
-    Logger.debug("Append Entries #{inspect(entries)}, log length: #{inspect(log_length)}")
+    Logger.debug(
+      "Append Entries #{inspect(entries)}, log length: #{inspect(log_length)}, timestamp: #{
+        inspect(Time.utc_now())
+      }"
+    )
 
     state =
       if Enum.count(entries) > 0 and Enum.count(state.log) > log_length do
@@ -103,12 +107,23 @@ defmodule Raft.MessageProcessing.Helpers do
         state
       end
 
-    Logger.debug("Enum.count(entries): #{inspect(Enum.count(entries))}")
-    Logger.debug("Enum.count(state.log): #{inspect(Enum.count(state.log))}")
+    Logger.debug(
+      "Enum.count(entries): #{inspect(Enum.count(entries))}, timestamp: #{inspect(Time.utc_now())}"
+    )
+
+    Logger.debug(
+      "Enum.count(state.log): #{inspect(Enum.count(state.log))}, timestamp: #{
+        inspect(Time.utc_now())
+      }"
+    )
 
     state =
       if log_length + Enum.count(entries) > Enum.count(state.log) do
-        Logger.debug("log_length + Enum.count(entries) > Enum.count(state.log) is TRUE")
+        Logger.debug(
+          "log_length + Enum.count(entries) > Enum.count(state.log) is TRUE, timestamp: #{
+            inspect(Time.utc_now())
+          }"
+        )
 
         range = (Enum.count(state.log) - log_length)..(Enum.count(entries) - 1)
         Logger.debug("enum/slice range: #{inspect(range)}")

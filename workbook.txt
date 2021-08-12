@@ -16,4 +16,35 @@ There seems to be a fault with election timer reset while in follower state. Ele
 
 3/08 State.current_leader is nil after election and not updating properly after new election. False observation. current state updates properly.
 5/08 Algorithm not very stable with low election timers. Disabled save to disk function to test. Increased to 100ms heartbeat timer interval and 400 to 600 election timer interval. With higher timer intervals the algorithm seems to be ok.  
+
+
 6/08 After running the algorithm for prolong time, it is observed that Election timer won't start when called from log request function. Investigating.
+06:11:46.097 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]MP-types election timer entry point: 4
+06:11:46.097 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]Exit - log_request. state: %{acked_length: nil, cluster_size: 3, commit_index: 0, commit_length: 2, current_leader: :peer1@localhost, current_role: :follower, current_term: 1, last_applied: 0, log: [%Raft.LogEnt{cmd: "msg1", term: 1}, %Raft.LogEnt{cmd: "msg2", term: 1}], peers: [:peer1@localhost, :peer2@localhost, :peer3@localhost], sent_length: nil, voted_for: :peer1@localhost, votes_received: []}
+06:11:46.097 [debug][node=peer2@localhost mfa=Raft.ElectionTimer.handle_cast/2 ]Reseting election timer #Reference<0.339401128.3888644097.81431>, ID: 1976
+06:11:46.097 [debug][node=peer2@localhost mfa=Raft.ElectionTimer.handle_cast/2 ]Cancelling election timer #Reference<0.339401128.3888644097.81431>, ID: 1976
+06:11:46.097 [debug][node=peer2@localhost mfa=Raft.ElectionTimer.handle_cast/2 ]New timer election timer for 461 ms, time: #Reference<0.339401128.3888644097.81433>, ID: 1977
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.Comms.handle_cast/2 ]Received msg {:logRequest, {:peer1@localhost, 1, 2, 1, 2, []}} from :peer1@localhost. Sending to Raft.MessageProcessing.Main
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Main.handle_cast/2 ]Received logRequest. Sending to MessageProcessing
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]Entry - log_request. state: %{acked_length: nil, cluster_size: 3, commit_index: 0, commit_length: 2, current_leader: :peer1@localhost, current_role: :follower, current_term: 1, last_applied: 0, log: [%Raft.LogEnt{cmd: "msg1", term: 1}, %Raft.LogEnt{cmd: "msg2", term: 1}], peers: [:peer1@localhost, :peer2@localhost, :peer3@localhost], sent_length: nil, voted_for: :peer1@localhost, votes_received: []}
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]log_ok is TRUE
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]Term == current term and log_ok. Appending entries to the log
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Helpers.append_entries/4 ]Append Entries [], log length: 2
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Helpers.append_entries/4 ]Enum.count(entries): 0
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Helpers.append_entries/4 ]Enum.count(state.log): 2
+06:11:46.176 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]Term == current term and log_ok. Saving state to disk
+06:11:46.222 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Helpers.store_state_to_disk/1 ]State saved to disk
+06:11:46.222 [debug][node=peer2@localhost mfa=Raft.Comms.send_msg/3 ]Sending {:logResponse, {:peer2@localhost, 1, 2, true}} to :peer1@localhost @ #PID<18713.209.0>
+06:11:46.222 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]MP-types election timer entry point: 4
+06:11:46.566 [debug][node=peer2@localhost mfa=Raft.ElectionTimer.handle_info/2 ]Election timeout for timer: #Reference<0.339401128.3888644097.81433>, ID: 1977
+06:11:46.566 [debug][node=peer2@localhost mfa=Raft.ElectionTimer.handle_info/2 ]Cancelling election timer #Reference<0.339401128.3888644097.81433>, ID: 1977
+06:11:46.582 [debug][node=peer2@localhost mfa=Raft.MessageProcessing.Types.log_request/2 ]Exit - log_request. state: %{acked_length: nil, cluster_size: 3, commit_index: 0, commit_length: 2, current_leader: :peer1@localhost, current_role: :follower, current_term: 1, last_applied: 0, log: [%Raft.LogEnt{cmd: "msg1", term: 1}, %Raft.LogEnt{cmd: "msg2", term: 1}], peers: [:peer1@localhost, :peer2@localhost, :peer3@localhost], sent_length: nil, voted_for: :peer1@localhost, votes_received: []}
+06:11:46.582 [info][node=peer2@localhost mfa=Raft.MessageProcessing.Types.canditate/1 ]Election timer is up. Starting election on node :peer2@localhost
+
+
+6/08 Random elections. While on MP Logrequest and new requests are coming in, the process takes longer to process the current request leading to election timeout and new leader election process. 
+
+7/08 Added guard to stop heartbeat timer from starting while not in leader state.
+10/08 Sometimes the log request function takes longer to run resulting in election timeout. Investigating.
+11/08 The issue with the log request hang seems to be the Logger module itself. It was noticed that when the application is running and the VS code windows in maximised, the apllication is running new leader election.
+Trying to add sync_threshold: 50, in logger config to increase the logger messages. No difference. Next try to split the file to smaller files (autorotate) 

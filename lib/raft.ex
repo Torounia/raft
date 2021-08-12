@@ -22,7 +22,7 @@ defmodule Raft do
     end
 
     {:ok, supervisor_children} = Supervisor.which_children()
-    if Enum.count(supervisor_children) == 4 do
+    if Enum.count(supervisor_children) == 5 do
       Logger.debug("Supervisor children: #{inspect(supervisor_children)}")
 
     else

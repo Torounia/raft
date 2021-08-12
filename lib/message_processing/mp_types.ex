@@ -4,6 +4,7 @@ defmodule Raft.MessageProcessing.Types do
   alias Raft.HeartbeatTimer, as: HeartbeatTimer
   alias Raft.MessageProcessing.Helpers, as: Helpers
   alias Raft.Comms, as: Comms
+  alias Raft.StateToDisk, as: DETS
   alias Raft.LogEnt
 
   def first_time_run(state) do
@@ -31,7 +32,7 @@ defmodule Raft.MessageProcessing.Types do
             votes_received: [Node.self() | state.votes_received] |> Enum.reverse()
         }
 
-        Helpers.store_state_to_disk(state)
+        DETS.write(state)
         last_term = Helpers.log_last_term(state)
 
         broadcast_payload =
@@ -83,7 +84,7 @@ defmodule Raft.MessageProcessing.Types do
             voted_for: c_Id
         }
 
-        Helpers.store_state_to_disk(state)
+        DETS.write(state)
 
         Comms.send_msg(
           Node.self(),
@@ -148,7 +149,7 @@ defmodule Raft.MessageProcessing.Types do
             )
 
             state = Helpers.init_leader_state(state)
-            Helpers.store_state_to_disk(state)
+            DETS.write(state)
             ElectionTimer.cancel()
             Helpers.replicate_log_all(state)
             HeartbeatTimer.start()
@@ -181,7 +182,7 @@ defmodule Raft.MessageProcessing.Types do
           | acked_length: Map.put(state.acked_length, Node.self(), Enum.count(state.log))
         }
 
-        Helpers.store_state_to_disk(state)
+        DETS.write(state)
         Helpers.replicate_log_all(state)
         state
       else
@@ -210,7 +211,13 @@ defmodule Raft.MessageProcessing.Types do
   def log_request({leader_id, term, log_length, log_term, leader_commit, entries}, state) do
     # for debbuging purposes
     uniq_ref = make_ref()
-    Logger.debug("Entry - log_request. uniq_ref: #{inspect(uniq_ref)}  state: #{inspect(state)}")
+    timer_start = Time.utc_now()
+
+    Logger.debug(
+      "Entry - log_request. uniq_ref: #{inspect(uniq_ref)}, timestamp: #{inspect(Time.utc_now())},  state: #{
+        inspect(state)
+      }"
+    )
 
     state =
       if term > state.current_term do
@@ -223,9 +230,9 @@ defmodule Raft.MessageProcessing.Types do
         }
 
         Logger.debug(
-          "Term #{inspect(term)} is > than current term #{inspect(state.current_term)} .Updating state. #{
-            inspect(state)
-          }"
+          "Term #{inspect(term)} is > than current term #{inspect(state.current_term)}, timestamp: #{
+            inspect(Time.utc_now())
+          }.Updating state. #{inspect(state)}"
         )
 
         state
@@ -244,7 +251,7 @@ defmodule Raft.MessageProcessing.Types do
         Logger.debug(
           "Term #{inspect(term)} == current term #{inspect(state.current_term)} and current role is == #{
             inspect(state.current_role)
-          }  .Updating state. #{inspect(state)}"
+          }  ,timestamp: #{inspect(Time.utc_now())} .Updating state. #{inspect(state)}"
         )
 
         state
@@ -255,7 +262,7 @@ defmodule Raft.MessageProcessing.Types do
     log_ok =
       if Enum.count(state.log) >= log_length and
            (log_length == 0 or log_term == Enum.fetch!(state.log, log_length - 1).term) do
-        Logger.debug("log_ok is TRUE")
+        Logger.debug("log_ok is TRUE, timestamp: #{inspect(Time.utc_now())}")
         true
       else
         false
@@ -269,12 +276,22 @@ defmodule Raft.MessageProcessing.Types do
             current_leader: leader_id
         }
 
-        Logger.debug("Term == current term and log_ok. Appending entries to the log")
+        Logger.debug(
+          "Term == current term and log_ok. Appending entries to the log, timestamp: #{
+            inspect(Time.utc_now())
+          }"
+        )
+
         state = Helpers.append_entries(log_length, leader_commit, entries, state)
         acked = log_length + Enum.count(entries)
 
-        Logger.debug("Term == current term and log_ok. Saving state to disk")
-        Helpers.store_state_to_disk(state)
+        Logger.debug(
+          "Term == current term and log_ok. Saving state to disk, timestamp: #{
+            inspect(Time.utc_now())
+          }"
+        )
+
+        DETS.write(state)
 
         Raft.Comms.send_msg(
           Node.self(),
@@ -282,7 +299,9 @@ defmodule Raft.MessageProcessing.Types do
           {:logResponse, {Node.self(), state.current_term, acked, true}}
         )
 
-        Logger.debug("MP-types election timer entry point: 4")
+        Logger.debug(
+          "MP-types election timer entry point: 4, timestamp: #{inspect(Time.utc_now())}"
+        )
 
         case ElectionTimer.start() do
           :ok_timer_started ->
@@ -295,7 +314,7 @@ defmodule Raft.MessageProcessing.Types do
 
         state
       else
-        Helpers.store_state_to_disk(state)
+        DETS.write(state)
 
         Raft.Comms.send_msg(
           Node.self(),
@@ -308,7 +327,14 @@ defmodule Raft.MessageProcessing.Types do
         state
       end
 
-    Logger.debug("Exit - log_request. uniq_ref: #{inspect(uniq_ref)}. state: #{inspect(state)}")
+    time_run = Time.diff(Time.utc_now(), timer_start, :millisecond)
+
+    Logger.debug(
+      "Exit - log_request. uniq_ref: #{inspect(uniq_ref)}. Func run time: #{inspect(time_run)}, timestamp: #{
+        inspect(Time.utc_now())
+      } state: #{inspect(state)}"
+    )
+
     state
   end
 
@@ -337,7 +363,7 @@ defmodule Raft.MessageProcessing.Types do
                     Map.put(state.sent_length, follower, Map.get(state.sent_length, follower) - 1)
               }
 
-              Helpers.store_state_to_disk(state)
+              DETS.write(state)
               Helpers.replicate_log_single(follower, state)
               state
             else
@@ -359,7 +385,7 @@ defmodule Raft.MessageProcessing.Types do
             state
           end
 
-        Helpers.store_state_to_disk(state)
+        DETS.write(state)
         state
       end
 
@@ -368,8 +394,20 @@ defmodule Raft.MessageProcessing.Types do
   end
 
   def heartbeat_timout(state) do
-    Logger.debug("HeartBeat Timeout")
-    Helpers.replicate_log_all(state)
-    HeartbeatTimer.start()
+    uniq_ref = make_ref()
+
+    Logger.debug(
+      "Entry - heartbeat_timeout. uniq_ref: #{inspect(uniq_ref)}. state: #{inspect(state)}"
+    )
+
+    if state.current_role == :leader do
+      Logger.debug("HeartBeat Timeout on #{inspect(state.current_role)}. Replicating Log")
+      Helpers.replicate_log_all(state)
+      HeartbeatTimer.start()
+    end
+
+    Logger.debug(
+      "Exit - heartbeat_timeout. uniq_ref: #{inspect(uniq_ref)}. state: #{inspect(state)}"
+    )
   end
 end

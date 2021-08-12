@@ -43,11 +43,14 @@ defmodule Raft.ElectionTimer do
         Logger.debug("No timer to reset. Starting new timer")
         timeout = RandTimer.rand_election_timeout()
         new_timer = Process.send_after(__MODULE__, :work, timeout)
+        time_now = Time.utc_now()
         new_timer_ID = timer_ID + 1
 
         Logger.debug(
           "New timer election timer for #{inspect(timeout)} ms, time: #{inspect(new_timer)}, ID: #{
             inspect(new_timer_ID)
+          }, time now (logger) = #{inspect(Time.utc_now())}, timenow (not logger) = #{
+            inspect(time_now)
           }"
         )
 
@@ -58,11 +61,14 @@ defmodule Raft.ElectionTimer do
         Logger.debug("Cancelling election timer #{inspect(timer)}, ID: #{inspect(timer_ID)}")
         timeout = RandTimer.rand_election_timeout()
         new_timer = Process.send_after(__MODULE__, :work, timeout)
+        time_now = Time.utc_now()
         new_timer_ID = timer_ID + 1
 
         Logger.debug(
           "New timer election timer for #{inspect(timeout)} ms, time: #{inspect(new_timer)}, ID: #{
             inspect(new_timer_ID)
+          }, time now (logger) = #{inspect(Time.utc_now())}, timenow (not logger) = #{
+            inspect(time_now)
           }"
         )
 
@@ -74,7 +80,11 @@ defmodule Raft.ElectionTimer do
 
   def handle_cast(:cancel_election_timer, %{election_timer: timer, timerID: timer_ID}) do
     Logger.debug("Cancelling election timer #{inspect(timer)}, ID: #{inspect(timer_ID)}")
-    Process.cancel_timer(timer)
+
+    if timer != nil do
+      Process.cancel_timer(timer)
+    end
+
     {:noreply, %{election_timer: nil, timerID: timer_ID}}
   end
 
@@ -84,7 +94,14 @@ defmodule Raft.ElectionTimer do
   end
 
   def handle_info(:work, %{election_timer: timer, timerID: timer_ID}) do
-    Logger.debug("Election timeout for timer: #{inspect(timer)}, ID: #{inspect(timer_ID)}")
+    time_now = Time.utc_now()
+
+    Logger.debug(
+      "Election timeout for timer: #{inspect(timer)}, ID: #{inspect(timer_ID)}, time now (logger) = #{
+        inspect(Time.utc_now())
+      }, timenow (not logger) = #{inspect(time_now)}"
+    )
+
     Logger.debug("Cancelling election timer #{inspect(timer)}, ID: #{inspect(timer_ID)}")
 
     if timer != nil do
