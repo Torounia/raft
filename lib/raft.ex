@@ -1,7 +1,9 @@
 defmodule Raft do
-  @doc """
-  External facing module. Should have functions: init, write/ read log, system status
+  @moduledoc """
+  Main Raft Module. Entry point of the application. Contains the initialisation function, and other Raft control functions.
+  TODO: Move init() to another module
   """
+
   alias Raft.{
     InitStateVar,
     Supervisor,
@@ -10,7 +12,7 @@ defmodule Raft do
 
   require Logger
 
-  def init do
+  def init(type \\ :noStart) do
 
     Logger.info("Starting Raft consensus module")
     Logger.info("Initialising state")
@@ -29,6 +31,10 @@ defmodule Raft do
       Logger.error("Error, not all children processes started properly.")
     end
 
+    if type == :withStart do
+      Logger.info("Starting Raft protocol.")
+      Main.first_time_run()
+    end
 
   end
 
@@ -37,7 +43,7 @@ defmodule Raft do
   end
 
   def add_to_log(cmd) do
-    Main.new_entry(cmd)
+    Main.new_entry(cmd, Node.self())
   end
 
   def current_state() do

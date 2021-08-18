@@ -47,4 +47,18 @@ There seems to be a fault with election timer reset while in follower state. Ele
 7/08 Added guard to stop heartbeat timer from starting while not in leader state.
 10/08 Sometimes the log request function takes longer to run resulting in election timeout. Investigating.
 11/08 The issue with the log request hang seems to be the Logger module itself. It was noticed that when the application is running and the VS code windows in maximised, the apllication is running new leader election.
-Trying to add sync_threshold: 50, in logger config to increase the logger messages. No difference. Next try to split the file to smaller files (autorotate) 
+Trying to add sync_threshold: 50, in logger config to increase the logger messages. No difference. Next try to split the file to smaller files (autorotate)
+Performance improved by disabling the Antivirus. Erl can now work with more processing power. No random re-elections. 
+
+TODO:
+
+Testing and asserting the Raft requirements (See one note). Need to build test methods to prove Raft is working
+Module, function and types documentation. To create a new state struct to use with @types
+Report
+
+16/08 It it observed that the smallest timer that can be set using proccess.send_after is ~40ms.
+17/08 Timer set to <= 20ms will fire at around 25 to 30ms. Timer set above 20ms will fire at around 40ms
+
+18/08 searching for testing and proof options. Initially interested in using the mix test functionality but the configuration of mix to run seperate nodes on the same computer was challenging.
+More specific, using similar sh file as in paxos testing, application would execure parts of the code and then stop. Finally decided to build two more modules, client and test.
+Client will interact with the protocol to add new entries to the log and more and test will be a set of commands to proof the raft implementation is correct in accordance with the raft specification. 

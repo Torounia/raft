@@ -1,4 +1,7 @@
 defmodule Raft.StateToDisk do
+  @moduledoc """
+  Module to hold the GenServer used as the StableStorage layer to store the state to the disk. Is is implemented using Erlangs's DETS functionallity to store the data in binary format.
+  """
   use GenServer
   require Logger
 

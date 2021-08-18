@@ -15,8 +15,8 @@ defmodule Raft.MessageProcessing.Main do
     GenServer.cast(__MODULE__, :election_timer_timeout)
   end
 
-  def heartbeat_timer_timeout do
-    GenServer.cast(__MODULE__, :heartbeat_timer_timeout)
+  def heartbeat_timer_timeout(time) do
+    GenServer.cast(__MODULE__, {:heartbeat_timer_timeout, time})
   end
 
   def first_time_run do
@@ -32,8 +32,8 @@ defmodule Raft.MessageProcessing.Main do
     state
   end
 
-  def new_entry(msg) do
-    GenServer.cast(__MODULE__, {:new_entry, msg})
+  def new_entry(msg, originator) do
+    GenServer.cast(__MODULE__, {:new_entry, {msg, originator}})
   end
 
   # callbacks
@@ -51,7 +51,11 @@ defmodule Raft.MessageProcessing.Main do
     {:noreply, new_state}
   end
 
-  def handle_cast(:heartbeat_timer_timeout, state) do
+  def handle_cast({:heartbeat_timer_timeout, timer}, state) do
+    Logger.debug(
+      "Heartbeat to MP duration #{inspect(Time.diff(Time.utc_now(), timer, :millisecond))} "
+    )
+
     MP_types.heartbeat_timout(state)
     {:noreply, state}
   end
@@ -84,9 +88,9 @@ defmodule Raft.MessageProcessing.Main do
     {:noreply, new_state}
   end
 
-  def handle_cast({:new_entry, msg}, state) do
+  def handle_cast({:new_entry, {msg, originator}}, state) do
     Logger.debug("Received new log entry. Sending to MessageProcessing")
-    new_state = MP_types.new_entry_to_log(msg, state)
+    new_state = MP_types.new_entry_to_log({msg, originator}, state)
 
     {:noreply, new_state}
   end

@@ -1,3 +1,4 @@
 %{
   "logger_file_backend": {:hex, :logger_file_backend, "0.0.12", "5afaa76a0cb6123cd19900c0f414044cfc46c24c6a1b80842a9b0e7f6c755e57", [:mix], [], "hexpm", "7335cc4e186a3804f9d3651f2fb42243a11748f1e384421bdd17623ed53fed79"},
+  "micro_timer": {:hex, :micro_timer, "0.1.1", "0823171a318c124e5ae55d40ad1c79e165c128730b176c12f59ecf034156cb41", [:mix], [], "hexpm", "b37d279365fa39b45fceb5e02bcc1fc3b9d062d5c34e9c7877385c2f59d1ce92"},
 }

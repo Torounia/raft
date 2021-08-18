@@ -1,4 +1,7 @@
 defmodule Raft.MessageProcessing.Types do
+  @moduledoc """
+  Module to hold all the MessageProcessing functions used by the MessageProcessing GenServer.
+  """
   require Logger
   alias Raft.ElectionTimer, as: ElectionTimer
   alias Raft.HeartbeatTimer, as: HeartbeatTimer
@@ -167,14 +170,16 @@ defmodule Raft.MessageProcessing.Types do
     state
   end
 
-  def new_entry_to_log(entry, state) do
+  def new_entry_to_log({entry, originator}, state) do
     Logger.debug("Entry - new_entry_to_log. state: #{inspect(state)}")
 
     state =
       if state.current_role == :leader do
         state = %{
           state
-          | log: [%LogEnt{term: state.current_term, cmd: entry} | state.log] |> Enum.reverse()
+          | log:
+              [%LogEnt{term: state.current_term, cmd: entry, originator: originator} | state.log]
+              |> Enum.reverse()
         }
 
         state = %{
@@ -197,10 +202,10 @@ defmodule Raft.MessageProcessing.Types do
       )
 
       Comms.send_msg(
-        Node.self(),
         ## TODO, what if there is no leader to sent to? Also, do we need to send back a confirmation after commit?
+        Node.self(),
         state.current_leader,
-        {:logNewEntry, {entry, Node.self()}}
+        {:logNewEntry, {entry, originator}}
       )
     end
 

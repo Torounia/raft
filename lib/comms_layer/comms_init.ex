@@ -1,6 +1,6 @@
 defmodule Raft.ClusterConfig do
   @doc """
-  Functions related to cluster management
+  Functions related to cluster communication management
   """
   require Logger
 

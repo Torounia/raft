@@ -10,26 +10,10 @@ defmodule Raft.InitStateVar do
     sstable = initStableState()
 
     state = %{
-      # latest term server has seen (initialized to 0 on first boot, increases monotonically)
-      # int that increments everytime new leader election happens
       current_term: sstable.current_term,
-
-      # candidateId that received vote in current term (or null if none)
       voted_for: sstable.voted_for,
-
-      # Replicated log ( has )
       log: sstable.log,
-
-      # how far we have commited (or agrred) along the log with the rest of the nodes
       commit_length: sstable.commit_length,
-
-      # index of highest log entry known to be committed (initialized to 0, increases monotonically)
-      commit_index: 0,
-
-      # index of highest log entry applied to state machine (initialized to 0, increases monotonically)
-      last_applied: 0,
-
-      # current role (always a follower at first start)
       current_role: :follower,
       votes_received: [],
       sent_length: nil,

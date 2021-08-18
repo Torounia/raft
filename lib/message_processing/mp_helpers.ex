@@ -160,7 +160,15 @@ defmodule Raft.MessageProcessing.Helpers do
              state.current_term do
         msg_to_deliver = Enum.slice(state.log, state.commit_length..(Enum.max(ready) - 1))
 
-        for msg <- msg_to_deliver, do: Logger.info("Message to application #{inspect(msg.cmd)}")
+        for msg <- msg_to_deliver do
+          Logger.info(
+            "Message to application #{inspect(msg.cmd)} originated from #{inspect(msg.originator)}"
+          )
+
+          ## send confirmatrion to originator
+          Raft.Comms.send_msg(Node.self(), msg.originator, {:ok_commited, msg.cmd})
+        end
+
         %{state | commit_length: Enum.max(ready)}
       else
         state

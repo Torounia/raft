@@ -1,4 +1,12 @@
 defmodule Raft.ElectionTimer do
+  @moduledoc """
+  Module to hold the election timer GenServer functions and configurations.
+  As per the Raft protocol, the election timer is used by the cluster nodes to monitor leader health state.
+  If no log_replication RPCs are received from the leader for the duration of the election timer, the node is switching to canditate role and starts the leader election process to become the new leader.
+
+  The ElectionTimer GenServer has four public functions used by the Raft protocol during runtime.
+  TODO: Genserver function annotations, delete reset function
+  """
   use GenServer
   require Logger
   alias Raft.MessageProcessing.Main, as: MP
