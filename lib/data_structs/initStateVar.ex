@@ -6,7 +6,7 @@ defmodule Raft.InitStateVar do
     Configurations
   }
 
-  def initVariables() do
+  def initVariables(nodes) do
     sstable = initStableState()
 
     state = %{
@@ -19,8 +19,9 @@ defmodule Raft.InitStateVar do
       sent_length: nil,
       acked_length: nil,
       current_leader: nil,
-      peers: %Configurations{}.peers,
-      cluster_size: Enum.count(%Configurations{}.peers)
+      peers: nodes,
+      cluster_size: length(nodes),
+      protocol_start_caller: nil
     }
 
     Logger.debug("state: #{inspect(state)}")

@@ -5,7 +5,7 @@
                         'Elixir.Raft.ClusterConfig','Elixir.Raft.Comms',
                         'Elixir.Raft.Configurations','Elixir.Raft.DETS',
                         'Elixir.Raft.ElectionTimer','Elixir.Raft.GetHostIP',
-                        'Elixir.Raft.HeartbeatTimer',
+                        'Elixir.Raft.HeartbeatTimer','Elixir.Raft.Init',
                         'Elixir.Raft.InitStateVar','Elixir.Raft.LogEnt',
                         'Elixir.Raft.LogFormatter',
                         'Elixir.Raft.MessageProcessing.Helpers',
@@ -13,6 +13,7 @@
                         'Elixir.Raft.MessageProcessing.Types',
                         'Elixir.Raft.RandTimer','Elixir.Raft.StateEnt',
                         'Elixir.Raft.StateToDisk','Elixir.Raft.Supervisor',
-                        'Elixir.UDP']},
+                        'Elixir.Raft.Test','Elixir.Test','Elixir.UDP']},
               {registered,[]},
-              {vsn,"0.1.0"}]}.
+              {vsn,"0.1.0"},
+              {mod,{'Elixir.Raft.Init',[]}}]}.

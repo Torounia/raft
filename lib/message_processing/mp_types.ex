@@ -10,14 +10,22 @@ defmodule Raft.MessageProcessing.Types do
   alias Raft.StateToDisk, as: DETS
   alias Raft.LogEnt
 
-  def first_time_run(state) do
-    Logger.debug("First time run state #{inspect(state)}")
+  def first_time_run(state, caller) do
+    state =
+      if state.current_role == :follower do
+        state = %{
+          state
+          | protocol_start_caller: caller
+        }
 
-    if state.current_role == :follower do
-      Logger.debug("Starting follower election timer")
-      Logger.debug("MP-types election timer entry point: 1")
-      ElectionTimer.start()
-    end
+        Logger.debug("Starting Raft protocol #{inspect(state)}")
+        Logger.debug("Starting follower election timer")
+        Logger.debug("MP-types election timer entry point: 1")
+        ElectionTimer.start()
+        state
+      end
+
+    state
   end
 
   def canditate(state) do
@@ -156,6 +164,21 @@ defmodule Raft.MessageProcessing.Types do
             ElectionTimer.cancel()
             Helpers.replicate_log_all(state)
             HeartbeatTimer.start()
+
+            if state.protocol_start_caller == nil do
+              Comms.send_msg(
+                Node.self(),
+                :test@localhost,
+                {:leader, Node.self()}
+              )
+            else
+              Comms.send_msg(
+                Node.self(),
+                state.protocol_start_caller,
+                {:leader, Node.self()}
+              )
+            end
+
             state
           else
             state
@@ -414,5 +437,17 @@ defmodule Raft.MessageProcessing.Types do
     Logger.debug(
       "Exit - heartbeat_timeout. uniq_ref: #{inspect(uniq_ref)}. state: #{inspect(state)}"
     )
+  end
+
+  def send_current_state(dest, state) do
+    Logger.debug("Sending a copy of the current state to #{inspect(dest)}")
+
+    Raft.Comms.send_msg(
+      Node.self(),
+      dest,
+      {:state_report, {Node.self(), state}}
+    )
+
+    state
   end
 end

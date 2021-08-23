@@ -5,9 +5,9 @@ defmodule Raft.Comms do
   alias Raft.MessageProcessing.Main, as: MP
   # client API
 
-  def startServer() do
+  def startServer(state) do
     Logger.debug("Starting Comms GenServer")
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
   def broadcast(nodes, source, msg) do
@@ -33,7 +33,7 @@ defmodule Raft.Comms do
 
   # callbacks
   def init(state) do
-    ClusterConfig.init()
+    ClusterConfig.init(state)
     {:ok, state}
   end
 

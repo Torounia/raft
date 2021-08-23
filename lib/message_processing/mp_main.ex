@@ -19,7 +19,7 @@ defmodule Raft.MessageProcessing.Main do
     GenServer.cast(__MODULE__, {:heartbeat_timer_timeout, time})
   end
 
-  def first_time_run do
+  def first_time_run() do
     send(__MODULE__, :first_time_run)
   end
 
@@ -82,6 +82,33 @@ defmodule Raft.MessageProcessing.Main do
         {:logResponse, payload} ->
           Logger.debug("Received logResponse. Sending to MessageProcessing")
           MP_types.log_response(payload, state)
+
+        {:startProtocol, payload} ->
+          Logger.debug("Received startProtocol.Sending to MessageProcessing")
+          MP_types.first_time_run(state, payload)
+
+        {:terminateNode, _payload} ->
+          Logger.debug("Terminating Node")
+          :init.stop()
+
+        {:ok_commited, payload} ->
+          Logger.info("Command #{inspect(payload)} has been commited on all nodes")
+          state
+
+        {:report_state, payload} ->
+          Logger.info(
+            "Current State requested from #{inspect(payload)}. Sending to MessageProcessing"
+          )
+
+          MP_types.send_current_state(payload, state)
+
+        {:newLeader, payload} ->
+          Logger.info(
+            "New leader election request from #{inspect(payload)}. Sending to MessageProcessing"
+          )
+
+          :timer.sleep(2000)
+          # MP_types.canditate(state)
       end
 
     # Logger.debug("New state = #{inspect(new_state)}")
@@ -96,7 +123,7 @@ defmodule Raft.MessageProcessing.Main do
   end
 
   def handle_info(:first_time_run, state) do
-    MP_types.first_time_run(state)
+    MP_types.first_time_run(state, Node.self())
     {:noreply, state}
   end
 end

@@ -18,6 +18,21 @@ defmodule Raft.Client do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
+  def add_to_log(start_timestamp, source, dest, msg) do
+    case :global.whereis_name(dest) do
+      :undefined ->
+        Logger.debug("Cannot find #{inspect(dest)} in the cluster")
+
+      pid ->
+        Logger.debug(
+          "Sending #{inspect(msg)} to #{inspect(dest)} @ #{inspect(:global.whereis_name(dest))}"
+        )
+
+        GenServer.cast(__MODULE__, {:start_timestamp, start_timestamp})
+        GenServer.cast(pid, {:sendMsg, source, msg})
+    end
+  end
+
   def send_msg(source, dest, msg) do
     case :global.whereis_name(dest) do
       :undefined ->
@@ -40,7 +55,24 @@ defmodule Raft.Client do
   def handle_cast({:sendMsg, source, msg}, state) do
     Logger.info("Received msg #{inspect(msg)} from #{inspect(source)}.")
 
-    # MP.received_msg(msg)
+    case msg do
+      {:ok_commited, cmd} ->
+        Logger.info(
+          " Command #{inspect(cmd)} is commited to the Raft Log. Elapsed time: #{
+            inspect(Time.diff(Time.utc_now(), state.start_timestamp, :millisecond))
+          } "
+        )
+
+      {_, msg} ->
+        Logger.info("Received unknown message #{inspect(msg)}")
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:start_timestamp, start_timestamp}, state) do
+    Logger.debug("Adding new_log_msg start_timestamp to state")
+    state = Map.put(state, :start_timestamp, start_timestamp)
     {:noreply, state}
   end
 end

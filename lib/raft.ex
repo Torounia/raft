@@ -12,13 +12,15 @@ defmodule Raft do
 
   require Logger
 
-  def init(type \\ :noStart) do
+  def init(nodes) do
 
     Logger.info("Starting Raft consensus module")
     Logger.info("Initialising state")
-    state = InitStateVar.initVariables()
+    state = InitStateVar.initVariables(nodes)
     Logger.info("Starting Supervisor")
-    case Supervisor.startSupervisor(state) do
+    supervisor_state = Supervisor.startSupervisor(state)
+
+    case supervisor_state do
       {:ok, pid} -> Logger.info("Supervisor started. pid: #{inspect(pid)}")
       {:error, {:already_started, pid}} -> Logger.info("Supervisor already started. pid: #{inspect(pid)}")
     end
@@ -31,11 +33,7 @@ defmodule Raft do
       Logger.error("Error, not all children processes started properly.")
     end
 
-    if type == :withStart do
-      Logger.info("Starting Raft protocol.")
-      Main.first_time_run()
-    end
-
+    supervisor_state
   end
 
   def start do
