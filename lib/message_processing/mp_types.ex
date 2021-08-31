@@ -10,19 +10,16 @@ defmodule Raft.MessageProcessing.Types do
   alias Raft.StateToDisk, as: DETS
   alias Raft.LogEnt
 
-  def first_time_run(state, caller) do
+  def start_protocol(state) do
     state =
       if state.current_role == :follower do
-        state = %{
-          state
-          | protocol_start_caller: caller
-        }
-
         Logger.debug("Starting Raft protocol #{inspect(state)}")
         Logger.debug("Starting follower election timer")
         Logger.debug("MP-types election timer entry point: 1")
         ElectionTimer.start()
         state
+      else
+        Logger.error("Not follower state. Cannot start protocol")
       end
 
     state
@@ -31,7 +28,7 @@ defmodule Raft.MessageProcessing.Types do
   def canditate(state) do
     state =
       if state.current_role != :leader do
-        Logger.info("Election timer is up. Starting election on node #{inspect(Node.self())}")
+        Logger.info("Starting election on node #{inspect(Node.self())}")
         Logger.debug("MP-types election timer entry point: 2")
         ElectionTimer.start()
 
@@ -40,7 +37,8 @@ defmodule Raft.MessageProcessing.Types do
           | current_term: state.current_term + 1,
             current_role: :candidate,
             voted_for: Node.self(),
-            votes_received: [Node.self() | state.votes_received] |> Enum.reverse()
+            votes_received: [Node.self() | state.votes_received] |> Enum.reverse(),
+            runtime_stats: Map.put(state.runtime_stats, :last_election_duration, Time.utc_now())
         }
 
         DETS.write(state)
@@ -160,24 +158,22 @@ defmodule Raft.MessageProcessing.Types do
             )
 
             state = Helpers.init_leader_state(state)
+            election_start_time = state.runtime_stats.last_election_duration
+
+            state = %{
+              state
+              | runtime_stats:
+                  Map.put(
+                    state.runtime_stats,
+                    :last_election_duration,
+                    Time.diff(Time.utc_now(), election_start_time, :millisecond)
+                  )
+            }
+
             DETS.write(state)
             ElectionTimer.cancel()
             Helpers.replicate_log_all(state)
             HeartbeatTimer.start()
-
-            if state.protocol_start_caller == nil do
-              Comms.send_msg(
-                Node.self(),
-                :test@localhost,
-                {:leader, Node.self()}
-              )
-            else
-              Comms.send_msg(
-                Node.self(),
-                state.protocol_start_caller,
-                {:leader, Node.self()}
-              )
-            end
 
             state
           else

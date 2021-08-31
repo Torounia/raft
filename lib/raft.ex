@@ -37,7 +37,7 @@ defmodule Raft do
   end
 
   def start do
-    Main.first_time_run()
+    Main.start_protocol()
   end
 
   def add_to_log(cmd) do

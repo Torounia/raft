@@ -19,16 +19,16 @@ defmodule Test do
   end
 
   def start_raft() do
-    Raft.Test.start_raft(Time.utc_now(), Node.self(), :peer1@localhost)
+    Raft.Test.start_raft(:peer1@localhost)
   end
 
   def atMostOneLeader() do
     Logger.info("Election Safety Test. At most one leader can be elected in a given term")
 
     start_raft()
-    :timer.sleep(1000)
+    :timer.sleep(6000)
     Raft.Test.request_state()
-    :timer.sleep(2000)
+    :timer.sleep(6000)
     test_state = Raft.Test.show_current_state()
 
     Logger.info("Printing current leader on all nodes")
@@ -37,10 +37,11 @@ defmodule Test do
       Logger.info(
         "Peer #{inspect(peer)}, Term: #{inspect(state.current_term)}, Leader: #{
           inspect(state.current_leader)
-        }"
+        }, Last election duration: #{inspect(state.runtime_stats.last_election_duration)} "
       )
     end
 
+    :timer.sleep(6000)
     Logger.info("Test End")
   end
 

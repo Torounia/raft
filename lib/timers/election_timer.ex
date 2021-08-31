@@ -21,10 +21,6 @@ defmodule Raft.ElectionTimer do
     GenServer.call(__MODULE__, :start_election_timer)
   end
 
-  def reset() do
-    GenServer.cast(__MODULE__, :reset_timer)
-  end
-
   def cancel() do
     GenServer.cast(__MODULE__, :cancel_election_timer)
   end

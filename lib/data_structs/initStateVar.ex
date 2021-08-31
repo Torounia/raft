@@ -21,7 +21,9 @@ defmodule Raft.InitStateVar do
       current_leader: nil,
       peers: nodes,
       cluster_size: length(nodes),
-      protocol_start_caller: nil
+      runtime_stats: %{
+        last_election_duration: nil
+      }
     }
 
     Logger.debug("state: #{inspect(state)}")

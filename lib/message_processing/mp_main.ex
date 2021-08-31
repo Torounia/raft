@@ -19,8 +19,8 @@ defmodule Raft.MessageProcessing.Main do
     GenServer.cast(__MODULE__, {:heartbeat_timer_timeout, time})
   end
 
-  def first_time_run() do
-    send(__MODULE__, :first_time_run)
+  def start_protocol() do
+    send(__MODULE__, :start_protocol)
   end
 
   def received_msg(msg) do
@@ -83,9 +83,13 @@ defmodule Raft.MessageProcessing.Main do
           Logger.debug("Received logResponse. Sending to MessageProcessing")
           MP_types.log_response(payload, state)
 
-        {:startProtocol, payload} ->
+        {:startProtocol, _payload} ->
           Logger.debug("Received startProtocol.Sending to MessageProcessing")
-          MP_types.first_time_run(state, payload)
+          MP_types.start_protocol(state)
+
+        {:startCandidate, _payload} ->
+          Logger.debug("Received startProtocol.Sending to MessageProcessing")
+          MP_types.canditate(state)
 
         {:terminateNode, _payload} ->
           Logger.debug("Terminating Node")
@@ -122,8 +126,8 @@ defmodule Raft.MessageProcessing.Main do
     {:noreply, new_state}
   end
 
-  def handle_info(:first_time_run, state) do
-    MP_types.first_time_run(state, Node.self())
+  def handle_info(:start_protocol, state) do
+    MP_types.start_protocol(state)
     {:noreply, state}
   end
 end

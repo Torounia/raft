@@ -15,8 +15,7 @@ defmodule Raft.Test do
   end
 
   def show_current_state() do
-    state = GenServer.call(__MODULE__, :show_current_state)
-    state
+    GenServer.call(__MODULE__, :show_current_state)
   end
 
   def add_to_log(start_timestamp, source, dest, msg) do
@@ -48,7 +47,7 @@ defmodule Raft.Test do
     end
   end
 
-  def start_raft(request_time, source, dest) do
+  def start_raft(dest) do
     case :global.whereis_name(dest) do
       :undefined ->
         Logger.info("Cannot find #{inspect(dest)} in the cluster")
@@ -58,8 +57,7 @@ defmodule Raft.Test do
           "Sending :start_raft to #{inspect(dest)} @ #{inspect(:global.whereis_name(dest))}"
         )
 
-        GenServer.cast(__MODULE__, {:start_raft_start_timestamp, request_time})
-        GenServer.cast(pid, {:sendMsg, source, {:startProtocol, Node.self()}})
+        GenServer.cast(pid, {:sendMsg, Node.self(), {:startCandidate, Node.self()}})
     end
   end
 
@@ -93,39 +91,20 @@ defmodule Raft.Test do
     {:noreply, state}
   end
 
-  def handle_cast({:sendMsg, source, msg}, state) do
-    Logger.debug("Received msg #{inspect(msg)} from #{inspect(source)}.")
+  def handle_cast({:sendMsg, source, {:ok_commited, cmd}}, state) do
+    Logger.debug("Received commit confirmation by #{inspect(source)}.")
 
-    case msg do
-      {:ok_commited, cmd} ->
-        Logger.info(
-          " Command #{inspect(cmd)} is commited to the Raft Log. Elapsed time: #{
-            inspect(Time.diff(Time.utc_now(), state.add_new_log_start_timestamp, :millisecond))
-          } "
-        )
-
-      {:leader, peer} ->
-        Logger.info(
-          " Leader #{inspect(peer)} has been elected. Elapsed time: #{
-            inspect(Time.diff(Time.utc_now(), state.add_new_log_start_timestamp, :millisecond))
-          } "
-        )
-
-      {_, msg} ->
-        Logger.info("Received unknown message #{inspect(msg)}")
-    end
+    Logger.info(
+      " Command #{inspect(cmd)} is commited to the Raft Log. Elapsed time: #{
+        inspect(Time.diff(Time.utc_now(), state.add_new_log_start_timestamp, :millisecond))
+      } "
+    )
 
     {:noreply, state}
   end
 
   def handle_cast({:add_new_log_start_timestamp, start_timestamp}, state) do
     Logger.debug("Adding new_log_msg start_timestamp to state")
-    state = Map.put(state, :add_new_log_start_timestamp, start_timestamp)
-    {:noreply, state}
-  end
-
-  def handle_cast({:start_raft_start_timestamp, start_timestamp}, state) do
-    Logger.debug("Starting Raft protocol start_timestamp to state")
     state = Map.put(state, :add_new_log_start_timestamp, start_timestamp)
     {:noreply, state}
   end
