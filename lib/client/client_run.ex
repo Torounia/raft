@@ -1,9 +1,9 @@
 defmodule Client do
   require Logger
 
-  def init() do
+  def init(nodes) do
     Logger.debug("Initialising Client Agent")
-    Raft.Client.startClient()
+    Raft.Client.startClient(nodes)
   end
 
   def new_log_entry(cmd) do

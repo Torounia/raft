@@ -13,9 +13,9 @@ defmodule Raft.Client do
   require Logger
   alias Raft.ClusterConfig, as: ClusterConfig
 
-  def startClient() do
+  def startClient(nodes) do
     Logger.debug("Starting Client GenServer")
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, nodes, name: __MODULE__)
   end
 
   def add_to_log(start_timestamp, source, dest, msg) do
@@ -48,8 +48,8 @@ defmodule Raft.Client do
   end
 
   def init(state) do
-    ClusterConfig.init()
-    {:ok, state}
+    ClusterConfig.init(state)
+    {:ok, %{}}
   end
 
   def handle_cast({:sendMsg, source, msg}, state) do

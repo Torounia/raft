@@ -50,10 +50,10 @@ defmodule Raft.Test do
   def start_raft(dest) do
     case :global.whereis_name(dest) do
       :undefined ->
-        Logger.info("Cannot find #{inspect(dest)} in the cluster")
+        Logger.error("Cannot find #{inspect(dest)} in the cluster")
 
       pid ->
-        Logger.info(
+        Logger.debug(
           "Sending :start_raft to #{inspect(dest)} @ #{inspect(:global.whereis_name(dest))}"
         )
 
@@ -81,7 +81,7 @@ defmodule Raft.Test do
   end
 
   def handle_cast({:sendMsg, source, {:state_report, {r_source, r_state}}}, state) do
-    Logger.info("Received state from #{inspect(source)}. Saving in to test state.")
+    Logger.debug("Received state from #{inspect(source)}. Saving in to test state.")
 
     state = %{
       state
@@ -116,7 +116,7 @@ defmodule Raft.Test do
   end
 
   def handle_cast(:request_state, state) do
-    Logger.info("Broadcasting request_state to all nodes")
+    Logger.debug("Broadcasting request_state to all nodes")
 
     GenServer.abcast(
       state.peers,

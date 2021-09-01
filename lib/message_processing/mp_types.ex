@@ -197,8 +197,7 @@ defmodule Raft.MessageProcessing.Types do
         state = %{
           state
           | log:
-              [%LogEnt{term: state.current_term, cmd: entry, originator: originator} | state.log]
-              |> Enum.reverse()
+              state.log ++ [%LogEnt{term: state.current_term, cmd: entry, originator: originator}]
         }
 
         state = %{

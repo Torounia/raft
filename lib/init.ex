@@ -47,7 +47,7 @@ defmodule Raft.Init do
 
       :client ->
         Logger.info("Starting client node")
-        Client.init()
+        Client.init(generate_nodes(nodes_int))
         Supervisor.start_link([], strategy: :one_for_one)
 
       :test ->
