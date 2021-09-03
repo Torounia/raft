@@ -93,6 +93,7 @@ defmodule Raft.MessageProcessing.Types do
             voted_for: c_Id
         }
 
+        Logger.info("New election, voting for #{inspect(c_Id)}")
         DETS.write(state)
 
         Comms.send_msg(
@@ -252,11 +253,8 @@ defmodule Raft.MessageProcessing.Types do
             current_leader: leader_id
         }
 
-        Logger.debug(
-          "Term #{inspect(term)} is > than current term #{inspect(state.current_term)}, timestamp: #{
-            inspect(Time.utc_now())
-          }.Updating state. #{inspect(state)}"
-        )
+        Logger.info("Term #{inspect(term)} is > than current term #{inspect(state.current_term)}.
+          Changing to follower role. New leader: #{inspect(state.current_leader)}")
 
         state
       else
@@ -271,11 +269,9 @@ defmodule Raft.MessageProcessing.Types do
             current_leader: leader_id
         }
 
-        Logger.debug(
-          "Term #{inspect(term)} == current term #{inspect(state.current_term)} and current role is == #{
-            inspect(state.current_role)
-          }  ,timestamp: #{inspect(Time.utc_now())} .Updating state. #{inspect(state)}"
-        )
+        Logger.info("Term #{inspect(term)} == current term #{inspect(state.current_term)}.
+          Current role is #{inspect(state.current_role)}.
+          Changing to follower role. New leader: #{inspect(state.current_leader)}")
 
         state
       else
@@ -293,6 +289,10 @@ defmodule Raft.MessageProcessing.Types do
 
     state =
       if term == state.current_term and log_ok do
+        if state.current_leader == nil do
+          Logger.info("Changing to follower role. New leader: #{inspect(leader_id)}")
+        end
+
         state = %{
           state
           | current_role: :follower,

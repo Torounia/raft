@@ -65,8 +65,8 @@ defmodule Raft.Test do
     GenServer.cast(__MODULE__, :broadcast_terminate)
   end
 
-  def request_state() do
-    GenServer.cast(__MODULE__, :request_state)
+  def request_state(node \\ :all_nodes) do
+    GenServer.cast(__MODULE__, {:request_state, node})
   end
 
   def init(state) do
@@ -115,14 +115,24 @@ defmodule Raft.Test do
     {:noreply, state}
   end
 
-  def handle_cast(:request_state, state) do
-    Logger.debug("Broadcasting request_state to all nodes")
+  def handle_cast({:request_state, node}, state) do
+    Logger.debug("Broadcasting request_state to #{inspect(node)} node(s)")
 
-    GenServer.abcast(
-      state.peers,
-      Raft.Comms,
-      {:broadcast, Node.self(), {:report_state, Node.self()}}
-    )
+    case node do
+      :all ->
+        GenServer.abcast(
+          state.peers,
+          Raft.Comms,
+          {:broadcast, Node.self(), {:report_state, Node.self()}}
+        )
+
+      node ->
+        GenServer.abcast(
+          [node],
+          Raft.Comms,
+          {:broadcast, Node.self(), {:report_state, Node.self()}}
+        )
+    end
 
     {:noreply, state}
   end

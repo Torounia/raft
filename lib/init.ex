@@ -7,23 +7,22 @@ defmodule Raft.Init do
 
     Logger.debug("Reading enviroment variables")
     start_type = System.get_env("run_env")
-    atom_start_type = String.to_atom(start_type)
 
     state =
-      case atom_start_type do
-        :test_3 ->
+      case start_type do
+        "test_3" ->
           Logger.info("Starting Raft in testing mode")
           init(3)
 
-        :test_5 ->
+        "test_5" ->
           Logger.info("Starting Raft in testing mode")
           init(5)
 
-        :test_7 ->
+        "test_7" ->
           Logger.info("Starting Raft in testing mode")
           init(7)
 
-        :normal ->
+        "normal" ->
           Logger.info("Starting Raft in normal mode")
           init()
 
