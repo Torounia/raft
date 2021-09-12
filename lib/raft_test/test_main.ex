@@ -28,7 +28,8 @@ defmodule Raft.Test do
           "Sending #{inspect(msg)} to #{inspect(dest)} @ #{inspect(:global.whereis_name(dest))}"
         )
 
-        GenServer.cast(__MODULE__, {:add_new_log_start_timestamp, start_timestamp})
+        {:logNewEntry, {cmd, _}} = msg
+        GenServer.cast(__MODULE__, {:add_new_log_start_timestamp, {start_timestamp, cmd}})
         GenServer.cast(pid, {:sendMsg, source, msg})
     end
   end
@@ -47,7 +48,7 @@ defmodule Raft.Test do
     end
   end
 
-  def start_raft(dest) do
+  def start_election(dest) do
     case :global.whereis_name(dest) do
       :undefined ->
         Logger.error("Cannot find #{inspect(dest)} in the cluster")
@@ -63,6 +64,10 @@ defmodule Raft.Test do
 
   def terminate_nodes() do
     GenServer.cast(__MODULE__, :broadcast_terminate)
+  end
+
+  def reboot_nodes() do
+    GenServer.cast(__MODULE__, :broadcast_reboot)
   end
 
   def request_state(node \\ :all_nodes) do
@@ -93,24 +98,32 @@ defmodule Raft.Test do
 
   def handle_cast({:sendMsg, source, {:ok_commited, cmd}}, state) do
     Logger.debug("Received commit confirmation by #{inspect(source)}.")
+    {time, _} = state.add_new_log_start_timestamp
 
-    Logger.info(
+    Logger.debug(
       " Command #{inspect(cmd)} is commited to the Raft Log. Elapsed time: #{
-        inspect(Time.diff(Time.utc_now(), state.add_new_log_start_timestamp, :millisecond))
+        inspect(Time.diff(Time.utc_now(), time, :millisecond))
       } "
     )
 
+    state = Map.put(state, :add_new_log_stop_timestamp, {Time.utc_now(), cmd})
     {:noreply, state}
   end
 
-  def handle_cast({:add_new_log_start_timestamp, start_timestamp}, state) do
+  def handle_cast({:add_new_log_start_timestamp, {start_timestamp, cmd}}, state) do
     Logger.debug("Adding new_log_msg start_timestamp to state")
-    state = Map.put(state, :add_new_log_start_timestamp, start_timestamp)
+    state = Map.put(state, :add_new_log_start_timestamp, {start_timestamp, cmd})
+    {:noreply, state}
+  end
+
+  def handle_cast(:broadcast_reboot, state) do
+    Logger.info("Broadcasting reboot command to all nodes")
+    GenServer.abcast(state.peers, Raft.Comms, {:broadcast, Node.self(), {:rebootNode, []}})
     {:noreply, state}
   end
 
   def handle_cast(:broadcast_terminate, state) do
-    Logger.info("Broadcasting terminate command to all nodes")
+    Logger.debug("Broadcasting terminate command to all nodes")
     GenServer.abcast(state.peers, Raft.Comms, {:broadcast, Node.self(), {:terminateNode, []}})
     {:noreply, state}
   end

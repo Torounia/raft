@@ -1,4 +1,6 @@
 taskkill /IM erl.exe /F
+del *.log
+del *@localhost
 
 set run_env=test_5
 

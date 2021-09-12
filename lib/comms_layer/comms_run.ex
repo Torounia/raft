@@ -20,7 +20,7 @@ defmodule Raft.Comms do
   def send_msg(source, dest, msg) do
     case :global.whereis_name(dest) do
       :undefined ->
-        Logger.debug("Cannot find #{inspect(dest)} in the cluster")
+        Logger.error("Cannot find #{inspect(dest)} in the cluster")
 
       pid ->
         Logger.debug(

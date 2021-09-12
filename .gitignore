@@ -31,3 +31,5 @@ raft-*.tar
 *.log
 
 *@localhost
+
+workbook.txt

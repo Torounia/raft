@@ -26,6 +26,18 @@ defmodule Raft.Init do
           Logger.info("Starting Raft in normal mode")
           init()
 
+        "nerves_test_3" ->
+          Logger.info("Starting Raft in normal mode")
+          init_nerves(3)
+
+        "nerves_test_5" ->
+          Logger.info("Starting Raft in normal mode")
+          init_nerves(5)
+
+        "nerves_test_7" ->
+          Logger.info("Starting Raft in normal mode")
+          init_nerves(7)
+
         nil ->
           Logger.info("No ENV_VAR found. Starting Raft in normal mode")
           init()
@@ -51,7 +63,33 @@ defmodule Raft.Init do
 
       :test ->
         Logger.info("Starting test node")
+
+        nodes =
+          case nodes_int do
+            3 -> Application.fetch_env!(:raft, :peers3)
+            5 -> Application.fetch_env!(:raft, :peers5)
+            7 -> Application.fetch_env!(:raft, :peers7)
+          end
+
+        # Test.init(Application.fetch_env!(:raft, :peers))
         Test.init(generate_nodes(nodes_int))
+        Supervisor.start_link([], strategy: :one_for_one)
+    end
+  end
+
+  defp init_nerves(nodes_int) do
+    case node_type() do
+      :test ->
+        Logger.info("Starting test node (nerves)")
+
+        nodes =
+          case nodes_int do
+            3 -> Application.fetch_env!(:raft, :peers3)
+            5 -> Application.fetch_env!(:raft, :peers5)
+            7 -> Application.fetch_env!(:raft, :peers7)
+          end
+
+        Test.init(nodes)
         Supervisor.start_link([], strategy: :one_for_one)
     end
   end
